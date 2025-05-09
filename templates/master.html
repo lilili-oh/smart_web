@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Management - Master Page</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        a {
+            margin-left: 10px;
+            color: #e74c3c;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        form {
+            display: contents;
+        }
+    </style>
+</head>
+<body>
+    <h1>👑 User Management Dashboard</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>New Password</th>
+            <th>Actions</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+            <form method="POST" action="{{ url_for('update_user', user_id=user.id) }}">
+                <td>{{ user.id }}</td>
+                <td><input type="text" name="username" value="{{ user.username }}"></td>
+                <td><input type="email" name="email" value="{{ user.email }}"></td>
+                <td><input type="password" name="password" placeholder="Leave blank to keep"></td>
+                <td>
+                    <button type="submit">Update</button>
+                    <a href="{{ url_for('delete_user', user_id=user.id) }}" onclick="return confirm('Delete this user?');">Delete</a>
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

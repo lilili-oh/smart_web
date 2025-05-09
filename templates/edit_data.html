@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="edit-card">
+                <div class="edit-header">
+                    <h2 class="edit-title">
+                        <i class="fas fa-edit me-2"></i>Edit Task
+                    </h2>
+                </div>
+                <div class="edit-body">
+                    <form method="POST" class="edit-form">
+                        <div class="form-group">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading me-2"></i>Title
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-pencil-alt"></i></span>
+                                <input type="text" class="form-control" id="title" name="title" 
+                                       value="{{ data.title }}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="content" class="form-label">
+                                <i class="fas fa-align-left me-2"></i>Content
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-file-alt"></i></span>
+                                <textarea class="form-control" id="content" name="content" 
+                                          rows="5" required>{{ data.content }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="deadline" class="form-label">
+                                <i class="fas fa-calendar-alt me-2"></i>Deadline (Optional)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                <input type="datetime-local" class="form-control" id="deadline" 
+                                       name="deadline" value="{{ data.deadline.strftime('%Y-%m-%dT%H:%M') if data.deadline else '' }}">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary cancel-btn">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary save-btn">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modern Color Scheme */
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+/* Edit Card */
+.edit-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.edit-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+    padding: 1.5rem;
+    color: white;
+}
+
+.edit-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.edit-body {
+    padding: 2rem;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.input-group {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.input-group-text {
+    background: var(--light-color);
+    border: none;
+    color: var(--primary-color);
+}
+
+.form-control {
+    border: 1px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.cancel-btn, .save-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.save-btn {
+    background: linear-gradient(45deg, var(--primary-color), var(--info-color));
+    border: none;
+    color: white;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3);
+}
+
+.cancel-btn {
+    background: var(--light-color);
+    color: var(--dark-color);
+    border: none;
+}
+
+.cancel-btn:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .edit-body {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .cancel-btn, .save-btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %} 
