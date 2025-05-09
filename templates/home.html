@@ -55,8 +55,8 @@
             <h1 class="display-4 mb-4">Welcome to My App</h1>
             <p class="lead mb-4">Your personal space for managing and organizing your data efficiently</p>
             {% if not session.get('user_id') %}
-                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">Get Started</a>
-                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">Learn More</a>
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">开始</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">了解更多</a>
             {% endif %}
         </div>
     </section>
