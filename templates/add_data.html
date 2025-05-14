@@ -20,10 +20,19 @@
                             <label for="deadline" class="form-label">截止日期 (可选)</label>
                             <input type="datetime-local" class="form-control" id="deadline" name="deadline">
                         </div>
+                        <div class="mb-3">
+                            <label for="team" class="form-label">选择队伍</label>
+                            <select name="team_id" class="form-control">
+                                <option value="">Select a team</option>
+                                {% for team in user.teams %}
+                                    <option value="{{ team.id }}">{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         <div class="d-flex justify-content-between">
                             <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
                             <button type="submit" class="btn btn-primary">添加任务</button>
-                        </div>
+                        </div>  
                     </form>
                 </div>
             </div>

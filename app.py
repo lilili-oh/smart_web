@@ -73,7 +73,7 @@ class User(db.Model):
     profile_picture = db.Column(db.String(20), nullable=True)  # Changed to nullable
     bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=True)  # Changed to nullable
-    data = db.relationship('UserData', backref='author', lazy=True)
+    data = db.relationship('UserData',back_populates='user')
     is_admin = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
@@ -97,7 +97,10 @@ class UserData(db.Model):
     ai_analysis = db.Column(db.Text, nullable=True)   # New field
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    user = db.relationship('User')
+    user = db.relationship('User',back_populates='data')
+
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)  # 关联团队
+    team = db.relationship('Team', backref='tasks')
 
     def get_time_remaining(self):
         if not self.deadline:
@@ -226,6 +229,17 @@ class UserData(db.Model):
             error_msg = f"AI 分析过程出错: {str(e)}"
             logger.error(error_msg)
             return {"error": error_msg}
+        
+class Team(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    members = db.relationship('User', secondary='team_members', backref='teams')
+
+class TeamMember(db.Model):
+    __tablename__ = 'team_members'
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), primary_key=True)
 # Decorators
 def login_required(f):
     @wraps(f)
@@ -319,12 +333,51 @@ def login():
 
     return render_template('login.html')
 
+# 组队功能
+@app.route('/create_team', methods=['GET', 'POST'])
+@login_required
+def create_team():
+    if request.method == 'POST':
+        team_name = request.form.get('team_name')
+        description = request.form.get('description')
+        
+        # 创建新队伍
+        team = Team(name=team_name, description=description)
+        db.session.add(team)
+        db.session.commit()
+        
+        flash('Team created successfully!', 'success')
+        
+        # 返回到用户的个人资料页面，显示新创建的队伍
+        return redirect(url_for('profile'))  # 可以重定向到个人资料页面查看队伍
+
+    return render_template('team.html')  # 渲染创建队伍页面
 @app.route('/logout')
 @login_required
 def logout():
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('home'))
+
+# 加入队伍功能
+@app.route('/join_team/<int:team_id>', methods=['GET', 'POST'])
+@login_required
+def join_team(team_id):
+    # 获取当前登录的用户
+    user = User.query.get_or_404(session['user_id'])
+    team = Team.query.get_or_404(team_id)
+    
+    # 如果用户已经是队伍成员，则提示
+    if team in user.teams:
+        flash(f'You are already a member of the team "{team.name}".', 'info')
+        return redirect(url_for('profile'))  # 可以重定向到个人资料页面
+
+    # 将用户加入队伍
+    user.teams.append(team)
+    db.session.commit()
+    flash(f'You have successfully joined the team "{team.name}".', 'success')
+    
+    return redirect(url_for('profile'))  # 可以重定向到个人资料页面
 
 # master page
 @app.route('/master', methods=['GET', 'POST'])
@@ -337,27 +390,32 @@ def master():
 @login_required
 def dashboard():
     user = User.query.get_or_404(session['user_id'])
-    user_data = UserData.query.filter_by(user_id=user.id).all()
     
+    teams = user.teams
+    tasks = UserData.query.filter(UserData.team_id.in_([team.id for team in teams])).all()
     # 可以这样使用
-    for data in user_data:
+    for data in tasks:
         time_remaining = data.get_time_remaining()
         if time_remaining:
             print(f"Task {data.title} has {time_remaining} remaining")
 
-    return render_template('dashboard.html', user=user, user_data=user_data)
+    return render_template('dashboard.html', user=user, user_data=tasks)
 
 @app.route('/add_data', methods=['GET', 'POST'])
 @login_required
 def add_data():
+    user = User.query.get_or_404(session['user_id'])
+    teams = Team.query.all()
+
     if request.method == 'POST':
         title = request.form.get('title')
         content = request.form.get('content')
         deadline_str = request.form.get('deadline')
+        team_id = request.form.get('team_id')
 
         if not title or not content:
             flash('Title and content are required.', 'danger')
-            return render_template('add_data.html')
+            return render_template('add_data.html' ,user=user, teams=teams)
 
         # Convert deadline string to datetime if provided
         deadline = None
@@ -366,13 +424,14 @@ def add_data():
                 deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
             except ValueError:
                 flash('Invalid deadline format.', 'danger')
-                return render_template('add_data.html')
+                return render_template('add_data.html' ,user=user, teams=teams)
 
         new_data = UserData(
             title=title,
             content=content,
             deadline=deadline,
-            user_id=session['user_id']
+            user_id=session['user_id'],
+            team_id=team_id
         )
 
         try:
@@ -383,9 +442,9 @@ def add_data():
         except Exception as e:
             db.session.rollback()
             flash('An error occurred while adding data.', 'danger')
-            return render_template('add_data.html')
+            return render_template('add_data.html' ,user=user, teams=teams)
 
-    return render_template('add_data.html')
+    return render_template('add_data.html' ,user=user, teams=teams)
 
 @app.route('/edit_data/<int:data_id>', methods=['GET', 'POST'])
 @login_required
@@ -487,6 +546,22 @@ def delete_data(data_id):
 @login_required
 def profile():
     user = User.query.get_or_404(session['user_id'])
+    teams = Team.query.all()  # 获取所有的队伍
+
+    if request.method == 'POST':
+        # 用户提交加入队伍请求
+        team_id = request.form.get('team_id')
+        team = Team.query.get_or_404(team_id)
+
+        # 如果用户没有加入该队伍，则将其加入
+        if team not in user.teams:
+            user.teams.append(team)
+            db.session.commit()
+            flash(f'You have successfully joined the team "{team.name}".', 'success')
+        else:
+            flash(f'You are already a member of the team "{team.name}".', 'info')
+        
+        return redirect(url_for('profile'))  # 提交后刷新个人资料页面
     
     if request.method == 'POST':
         bio = request.form.get('bio')
@@ -505,7 +580,7 @@ def profile():
             db.session.rollback()
             flash('An error occurred while updating profile.', 'danger')
 
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=user, teams=teams)
 
 @app.route('/reset_password_request', methods=['GET', 'POST'])
 def reset_password_request():
@@ -595,17 +670,17 @@ def forbidden_error(error):
 if __name__ == '__main__':
     with app.app_context():
         # Drop all tables
-        # db.drop_all()
+        #db.drop_all()
         # Create all tables
         db.create_all()
 
         # 👇 只运行一次，用于设置管理员用户
-        admin = User.query.filter_by(username='lym').first()
+        admin = User.query.filter_by(username='yb').first()
         if admin:
             admin.is_admin = True
             db.session.commit()
             print(f"✅ 设置 {admin.username} 为管理员")
         else:
-            print("❌ 没有找到用户 'lym'")
+            print("❌ 没有找到用户 'yb'")
 
     app.run(debug=True)# 修改代码后自动重启程序
