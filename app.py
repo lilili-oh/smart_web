@@ -333,6 +333,14 @@ def login():
 
     return render_template('login.html')
 
+
+#任务总结功能
+@app.route('/summary', methods=['GET', 'POST'])
+@login_required
+def summary():
+    return render_template('summary.html')  # 渲染创建队伍页面
+
+
 # 组队功能
 @app.route('/create_team', methods=['GET', 'POST'])
 @login_required

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Welcome to My App</title>
+    <title>欢迎使用任务管理系统</title>
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
@@ -36,14 +36,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('home') }}">My App</a>
+            <a class="navbar-brand" href="{{ url_for('home') }}">首页</a>
             <div>
                 {% if session.get('user_id') %}
-                    <a class="btn btn-outline-light" href="{{ url_for('dashboard') }}">Dashboard</a>
-                    <a class="btn btn-outline-light" href="{{ url_for('logout') }}">Logout</a>
+                    <a class="btn btn-outline-light" href="{{ url_for('dashboard') }}">任务栏</a>
+                    <a class="btn btn-outline-light" href="{{ url_for('logout') }}">退出登录</a>
                 {% else %}
-                    <a class="btn btn-outline-light" href="{{ url_for('login') }}">Login</a>
-                    <a class="btn btn-outline-light" href="{{ url_for('register') }}">Register</a>
+                    <a class="btn btn-outline-light" href="{{ url_for('login') }}">登录</a>
+                    <a class="btn btn-outline-light" href="{{ url_for('register') }}">注册</a>
                 {% endif %}
             </div>
         </div>
@@ -52,25 +52,27 @@
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="container text-center">
-            <h1 class="display-4 mb-4">Welcome to My App</h1>
-            <p class="lead mb-4">Your personal space for managing and organizing your data efficiently</p>
+            <h1 class="display-4 mb-4">欢迎使用任务管理系统</h1>
+            <p class="lead mb-4">属于你的高效任务管理分析平台，无限进步！</p>
             {% if not session.get('user_id') %}
-                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">Get Started</a>
-                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">Learn More</a>
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">注册</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">登录</a>
+            {% else %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">进入任务栏</a>
             {% endif %}
         </div>
     </section>
 
     <!-- Features Section -->
     <section class="container">
-        <h2 class="text-center mb-5">Why Choose Us?</h2>
+        <h2 class="text-center mb-5">关于我们</h2>
         <div class="row">
             <div class="col-md-4">
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-shield-alt feature-icon"></i>
-                        <h3 class="card-title">Secure Storage</h3>
-                        <p class="card-text">Your data is protected with industry-standard security measures and encryption.</p>
+                        <h3 class="card-title">安全存储</h3>
+                        <p class="card-text">您的数据受到行业标准的安全措施和加密的保护。</p>
                     </div>
                 </div>
             </div>
@@ -78,8 +80,8 @@
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-bolt feature-icon"></i>
-                        <h3 class="card-title">Fast & Efficient</h3>
-                        <p class="card-text">Quick access to your data with our optimized performance system.</p>
+                        <h3 class="card-title">团队协作</h3>
+                        <p class="card-text">更加清晰地看到你的伙伴们与你共享的任务。</p>
                     </div>
                 </div>
             </div>
@@ -87,8 +89,8 @@
                 <div class="card feature-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-mobile-alt feature-icon"></i>
-                        <h3 class="card-title">Easy to Use</h3>
-                        <p class="card-text">Simple and intuitive interface designed for the best user experience.</p>
+                        <h3 class="card-title">便捷使用</h3>
+                        <p class="card-text">简单直观的界面设计，旨在提供最佳用户体验。</p>
                     </div>
                 </div>
             </div>
@@ -98,12 +100,12 @@
     <!-- Call to Action Section -->
     <section class="cta-section">
         <div class="container text-center">
-            <h2 class="mb-4">Ready to Get Started?</h2>
-            <p class="lead mb-4">Join thousands of users who trust our platform for their data management needs.</p>
+            <h2 class="mb-4">准备好开始了吗?</h2>
+            <p class="lead mb-4">在此感谢您对我们平台的信任。欢迎您的加入。</p>
             {% if not session.get('user_id') %}
-                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Create Free Account</a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">创建新账号</a>
             {% else %}
-                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">创建新账号</a>
             {% endif %}
         </div>
     </section>
