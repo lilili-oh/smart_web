@@ -748,7 +748,7 @@ def forbidden_error(error):
 if __name__ == '__main__':
     with app.app_context():
         # Drop all tables
-        db.drop_all()
+        #db.drop_all()
         # Create all tables
         db.create_all()
 
