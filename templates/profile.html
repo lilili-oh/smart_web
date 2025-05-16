@@ -51,6 +51,28 @@
                                 <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label for="teams" class="form-label">Your Teams</label>
+                            <ul class="list-group">
+                                {% if user.teams %}
+                                    {% for team in user.teams %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ team.name }}</strong> {{ team.description }}
+                                        </div>
+                                        <a href="{{ url_for('leave_team', team_id=team.id) }}" 
+                                        class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Are you sure you want to leave this team?')">
+                                            <i class="fas fa-sign-out-alt me-1"></i>Leave
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="list-group-item">You are not part of any team.</li>
+                                {% endif %}
+                            </ul>
+                        </div>
                         
                         <div class="form-group">
                             <label for="teams" class="form-label">Your Teams</label>

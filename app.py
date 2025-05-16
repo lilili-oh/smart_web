@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_, and_
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from functools import wraps
 import os
@@ -101,6 +103,7 @@ class UserData(db.Model):
 
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)  # 关联团队
     team = db.relationship('Team', backref='tasks')
+    team_editable = db.Column(db.Boolean, default=False)
 
     def get_time_remaining(self):
         if not self.deadline:
@@ -387,6 +390,26 @@ def join_team(team_id):
     
     return redirect(url_for('profile'))  # 可以重定向到个人资料页面
 
+# 离开队伍功能
+@app.route('/leave_team/<int:team_id>')
+@login_required
+def leave_team(team_id):
+    user = User.query.get_or_404(session['user_id'])
+    team = Team.query.get_or_404(team_id)
+
+    if team in user.teams:
+        user.teams.remove(team)
+        try:
+            db.session.commit()
+            flash(f'You have left the team {team.name}.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('Error leaving the team.', 'danger')
+    else:
+        flash('You are not a member of this team.', 'warning')
+
+    return redirect(url_for('profile'))
+
 # master page
 @app.route('/master', methods=['GET', 'POST'])
 @admin_required
@@ -400,12 +423,15 @@ def dashboard():
     user = User.query.get_or_404(session['user_id'])
     
     teams = user.teams
-    tasks = UserData.query.filter(UserData.team_id.in_([team.id for team in teams])).all()
-    # 可以这样使用
-    for data in tasks:
-        time_remaining = data.get_time_remaining()
-        if time_remaining:
-            print(f"Task {data.title} has {time_remaining} remaining")
+    tasks = user_data = UserData.query.filter(
+        or_(
+            UserData.user_id == user.id,
+            and_(
+                UserData.team_editable == True,
+                UserData.team_id.in_([team.id for team in user.teams])
+            )
+        )
+    ).order_by(UserData.created_at.desc()).all()
 
     return render_template('dashboard.html', user=user, user_data=tasks)
 
@@ -420,12 +446,12 @@ def add_data():
         content = request.form.get('content')
         deadline_str = request.form.get('deadline')
         team_id = request.form.get('team_id')
+        team_editable = 'team_editable' in request.form if team_id else False
 
         if not title or not content:
             flash('Title and content are required.', 'danger')
             return render_template('add_data.html' ,user=user, teams=teams)
 
-        # Convert deadline string to datetime if provided
         deadline = None
         if deadline_str:
             try:
@@ -439,7 +465,8 @@ def add_data():
             content=content,
             deadline=deadline,
             user_id=session['user_id'],
-            team_id=team_id
+            team_id=int(team_id) if team_id else None,
+            team_editable=team_editable
         )
 
         try:
@@ -457,9 +484,15 @@ def add_data():
 @app.route('/edit_data/<int:data_id>', methods=['GET', 'POST'])
 @login_required
 def edit_data(data_id):
+    user = User.query.get_or_404(session['user_id'])
     data = UserData.query.get_or_404(data_id)
+    teams = user.teams
+    team_id = request.form.get('team_id')
+    team_editable = bool(request.form.get('team_editable'))
     
-    if data.user_id != session['user_id']:
+    is_author = data.user_id == user.id
+    is_team_member = data.team_id and any(team.id == data.team_id for team in user.teams)
+    if not is_author and not (data.team_editable and is_team_member):
         abort(403)
 
     if request.method == 'POST':
@@ -469,7 +502,7 @@ def edit_data(data_id):
 
         if not title or not content:
             flash('Title and content are required.', 'danger')
-            return render_template('edit_data.html', data=data)
+            return render_template('edit_data.html', data=data,user=user, teams=teams)
 
         # Convert deadline string to datetime if provided
         deadline = None
@@ -478,7 +511,21 @@ def edit_data(data_id):
                 deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
             except ValueError:
                 flash('Invalid deadline format.', 'danger')
-                return render_template('edit_data.html', data=data)
+                return render_template('edit_data.html', data=data,user=user, teams=teams)
+
+        
+        # 设置团队归属（仅允许用户加入的队伍）
+        if team_id:
+            team = Team.query.get(int(team_id))
+            if team and team in user.teams:
+                data.team = team
+            else:
+                data.team = None
+        else:
+            data.team = None
+
+        # 设置是否允许团队编辑
+        data.team_editable = team_editable
 
         data.title = title
         data.content = content
@@ -492,9 +539,10 @@ def edit_data(data_id):
         except Exception as e:
             db.session.rollback()
             flash('An error occurred while updating data.', 'danger')
-            return render_template('edit_data.html', data=data)
+            return render_template('edit_data.html', data=data,user=user, teams=teams)
 
-    return render_template('edit_data.html', data=data)
+    return render_template('edit_data.html', data=data,user=user, teams=teams)
+
 # add || update user_data
 @app.route('/update_user/<int:user_id>', methods=['POST'])
 @admin_required
@@ -530,14 +578,15 @@ def delete_user(user_id):
 
     return redirect(url_for('master'))
 
-
-
 @app.route('/delete_data/<int:data_id>')
 @login_required
 def delete_data(data_id):
+    user = User.query.get_or_404(session['user_id'])
     data = UserData.query.get_or_404(data_id)
     
-    if data.user_id != session['user_id']:
+    is_author = data.user_id == user.id
+    is_team_member = data.team_id and any(team.id == data.team_id for team in user.teams)
+    if not is_author and not (data.team_editable and is_team_member):
         abort(403)
 
     try:
@@ -554,39 +603,52 @@ def delete_data(data_id):
 @login_required
 def profile():
     user = User.query.get_or_404(session['user_id'])
-    teams = Team.query.all()  # 获取所有的队伍
+    teams = Team.query.all()
 
     if request.method == 'POST':
-        # 用户提交加入队伍请求
-        team_id = request.form.get('team_id')
-        team = Team.query.get_or_404(team_id)
+        bio = request.form.get('bio', '')
+        selected_team_id = request.form.get('team_id')
+        file = request.files.get('profile_picture')
 
-        # 如果用户没有加入该队伍，则将其加入
-        if team not in user.teams:
-            user.teams.append(team)
-            db.session.commit()
-            flash(f'You have successfully joined the team "{team.name}".', 'success')
+        updated = False  # 追踪是否有改动
+
+        # 修改 bio
+        if bio != user.bio:
+            user.bio = bio
+            updated = True
+
+        # 上传头像
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            user.profile_picture = filename
+            updated = True
+
+        # 加入队伍
+        if selected_team_id:
+            try:
+                selected_team_id = int(selected_team_id)
+                team = Team.query.get(selected_team_id)
+                if team and team not in user.teams:
+                    user.teams.append(team)
+                    flash(f'Joined team: {team.name}', 'success')
+                    updated = True
+            except ValueError:
+                flash('Invalid team selection.', 'danger')
         else:
-            flash(f'You are already a member of the team "{team.name}".', 'info')
-        
-        return redirect(url_for('profile'))  # 提交后刷新个人资料页面
-    
-    if request.method == 'POST':
-        bio = request.form.get('bio')
-        user.bio = bio
-        
-        if 'profile_picture' in request.files:
-            file = request.files['profile_picture']
-            if file and file.filename:
-                # Add file handling logic here
-                pass
+            if 'team_id' in request.form:  # 用户点击了 Join 但没选队伍
+                flash('Please select a team to join.', 'warning')
 
+        # 提交变更
         try:
             db.session.commit()
-            flash('Profile updated successfully!', 'success')
+            flash('Profile updated successfully.', 'success')
         except Exception as e:
             db.session.rollback()
-            flash('An error occurred while updating profile.', 'danger')
+            flash('Failed to update profile.', 'danger')
+
+        return redirect(url_for('profile'))
 
     return render_template('profile.html', user=user, teams=teams)
 
@@ -654,9 +716,17 @@ def reset_password(token):
 @login_required
 def analyze_task(data_id):
     data = UserData.query.get_or_404(data_id)
+    user = User.query.get_or_404(session['user_id'])
     
-    if data.user_id != session['user_id']:
-        abort(403)
+    if data.team_id:
+        # 如果任务属于某个队伍，当前用户必须在队伍中
+        if data.team not in user.teams:
+            abort(403)
+    else:
+        # 非队伍任务，仅作者可分析
+        if data.user_id != user.id:
+            abort(403)
+
     
     analysis_result = data.analyze_with_ai()
     return jsonify(analysis_result)
@@ -678,7 +748,7 @@ def forbidden_error(error):
 if __name__ == '__main__':
     with app.app_context():
         # Drop all tables
-        #db.drop_all()
+        db.drop_all()
         # Create all tables
         db.create_all()
 

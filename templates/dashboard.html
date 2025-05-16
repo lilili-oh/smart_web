@@ -42,7 +42,12 @@
                         {% endif %}
                     </div>
 
-                     <p><strong>归属团队:</strong> {{ data.team.name if data.team else 'No team assigned' }}</p>
+                    <p><strong>归属团队:</strong> {{ data.team.name if data.team else 'No team assigned' }}</p>
+                    <p>
+                        {% if data.team_editable %}
+                            <span class="badge bg-success">队伍可编辑</span>
+                        {% endif %}
+                    </p>
                     
                     <!-- AI Analysis Section -->
                     <div class="ai-analysis-section mt-3">
