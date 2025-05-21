@@ -238,6 +238,7 @@ class Team(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     members = db.relationship('User', secondary='team_members', backref='teams')
+    password = db.Column(db.String(6), nullable=False)  # 6位数字密码，必填
 
 class TeamMember(db.Model):
     __tablename__ = 'team_members'
@@ -337,7 +338,7 @@ def login():
     return render_template('login.html')
 
 
-#任务总结功能
+#团队概况功能
 @app.route('/summary', methods=['GET', 'POST'])
 @login_required
 def summary():
@@ -351,18 +352,23 @@ def create_team():
     if request.method == 'POST':
         team_name = request.form.get('team_name')
         description = request.form.get('description')
-        
+        password = request.form.get('password')  # 获取密码字段 ✅
+
+        if not password or not password.isdigit() or len(password) != 6:
+            flash('团队密码必须是6位数字。', 'danger')
+            return render_template('team.html')
+
         # 创建新队伍
-        team = Team(name=team_name, description=description)
+        team = Team(name=team_name, description=description, password=password)  # ✅ 增加密码字段
         db.session.add(team)
         db.session.commit()
-        
-        flash('Team created successfully!', 'success')
-        
-        # 返回到用户的个人资料页面，显示新创建的队伍
-        return redirect(url_for('profile'))  # 可以重定向到个人资料页面查看队伍
 
-    return render_template('team.html')  # 渲染创建队伍页面
+        flash('Team created successfully!', 'success')
+        return redirect(url_for('profile'))
+
+    return render_template('team.html')
+
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -374,21 +380,26 @@ def logout():
 @app.route('/join_team/<int:team_id>', methods=['GET', 'POST'])
 @login_required
 def join_team(team_id):
-    # 获取当前登录的用户
     user = User.query.get_or_404(session['user_id'])
     team = Team.query.get_or_404(team_id)
-    
-    # 如果用户已经是队伍成员，则提示
-    if team in user.teams:
-        flash(f'You are already a member of the team "{team.name}".', 'info')
-        return redirect(url_for('profile'))  # 可以重定向到个人资料页面
 
-    # 将用户加入队伍
-    user.teams.append(team)
-    db.session.commit()
-    flash(f'You have successfully joined the team "{team.name}".', 'success')
-    
-    return redirect(url_for('profile'))  # 可以重定向到个人资料页面
+    if team in user.teams:
+        flash(f'你已经加入了团队 "{team.name}"。', 'info')
+        return redirect(url_for('profile'))
+
+    if request.method == 'POST':
+        input_password = request.form.get('password')
+        if input_password != team.password:
+            flash('密码错误，无法加入该团队。', 'danger')
+            return redirect(url_for('join_team', team_id=team_id))
+
+        user.teams.append(team)
+        db.session.commit()
+        flash(f'成功加入团队 "{team.name}"！', 'success')
+        return redirect(url_for('profile'))
+
+    return render_template('join_team.html', team=team)
+
 
 # 离开队伍功能
 @app.route('/leave_team/<int:team_id>')
@@ -630,15 +641,22 @@ def profile():
             try:
                 selected_team_id = int(selected_team_id)
                 team = Team.query.get(selected_team_id)
+                input_password = request.form.get('team_password', '')
+
                 if team and team not in user.teams:
-                    user.teams.append(team)
-                    flash(f'Joined team: {team.name}', 'success')
-                    updated = True
+                    if input_password == team.password:
+                        user.teams.append(team)
+                        flash(f'成功加入团队：{team.name}', 'success')
+                        updated = True
+                    else:
+                        flash('团队密码错误，无法加入。', 'danger')
+                elif team in user.teams:
+                    flash(f'你已经是团队“{team.name}”的成员。', 'info')
             except ValueError:
-                flash('Invalid team selection.', 'danger')
+                flash('无效的团队选择。', 'danger')
         else:
             if 'team_id' in request.form:  # 用户点击了 Join 但没选队伍
-                flash('Please select a team to join.', 'warning')
+                flash('请选择一个团队并输入密码以加入。', 'warning')
 
         # 提交变更
         try:
@@ -747,9 +765,7 @@ def forbidden_error(error):
 
 if __name__ == '__main__':
     with app.app_context():
-        # Drop all tables
-        #db.drop_all()
-        # Create all tables
+        # db.drop_all()
         db.create_all()
 
         # 👇 只运行一次，用于设置管理员用户

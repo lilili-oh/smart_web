@@ -3,128 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <title>欢迎使用任务管理系统</title>
-    <!-- Bootstrap CSS CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
     <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+
+        .navbar {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
         .hero-section {
-            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+            background: linear-gradient(135deg, #6B73FF, #000DFF);
             color: white;
             padding: 100px 0;
-            margin-bottom: 50px;
+            text-align: center;
         }
+
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 600;
+        }
+
         .feature-icon {
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             margin-bottom: 1rem;
-            color: #000DFF;
+            color: #6B73FF;
         }
+
         .feature-card {
-            transition: transform 0.3s ease;
-            margin-bottom: 20px;
+            border: none;
+            border-radius: 16px;
+            background: linear-gradient(145deg, #ffffff, #f1f3f6);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
         }
+
         .feature-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
         }
+
         .cta-section {
-            background-color: #f8f9fa;
+            background: linear-gradient(to right, #ffecd2 0%, #fcb69f 100%);
             padding: 80px 0;
-            margin-top: 50px;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-weight: 600;
+        }
+
+        .btn-lg {
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('home') }}">首页</a>
-            <div>
-                {% if session.get('user_id') %}
-                    <a class="btn btn-outline-light" href="{{ url_for('dashboard') }}">任务栏</a>
-                    <a class="btn btn-outline-light" href="{{ url_for('logout') }}">退出登录</a>
-                {% else %}
-                    <a class="btn btn-outline-light" href="{{ url_for('login') }}">登录</a>
-                    <a class="btn btn-outline-light" href="{{ url_for('register') }}">注册</a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container text-center">
-            <h1 class="display-4 mb-4">欢迎使用任务管理系统</h1>
-            <p class="lead mb-4">属于你的高效任务管理分析平台，无限进步！</p>
-            {% if not session.get('user_id') %}
-                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">注册</a>
-                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">登录</a>
-            {% else %}
-                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">进入任务栏</a>
-            {% endif %}
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="container">
-        <h2 class="text-center mb-5">关于我们</h2>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-shield-alt feature-icon"></i>
-                        <h3 class="card-title">安全存储</h3>
-                        <p class="card-text">您的数据受到行业标准的安全措施和加密的保护。</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-bolt feature-icon"></i>
-                        <h3 class="card-title">团队协作</h3>
-                        <p class="card-text">更加清晰地看到你的伙伴们与你共享的任务。</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-mobile-alt feature-icon"></i>
-                        <h3 class="card-title">便捷使用</h3>
-                        <p class="card-text">简单直观的界面设计，旨在提供最佳用户体验。</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Call to Action Section -->
-    <section class="cta-section">
-        <div class="container text-center">
-            <h2 class="mb-4">准备好开始了吗?</h2>
-            <p class="lead mb-4">在此感谢您对我们平台的信任。欢迎您的加入。</p>
-            {% if not session.get('user_id') %}
-                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">创建新账号</a>
-            {% else %}
-                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">创建新账号</a>
-            {% endif %}
-        </div>
-    </section>
-
-    <!-- Flash Messages -->
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        <a class="navbar-brand" href="{{ url_for('home') }}">任务系统</a>
+        <div>
+            {% if session.get('user_id') %}
+                <a class="btn btn-outline-light me-2" href="{{ url_for('dashboard') }}">任务栏</a>
+                <a class="btn btn-outline-light" href="{{ url_for('logout') }}">退出</a>
+            {% else %}
+                <a class="btn btn-outline-light me-2" href="{{ url_for('login') }}">登录</a>
+                <a class="btn btn-light" href="{{ url_for('register') }}">注册</a>
+            {% endif %}
+        </div>
     </div>
+</nav>
 
-    <!-- Bootstrap JS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <h1 class="mb-3">欢迎使用任务管理系统</h1>
+        <p class="lead mb-4">属于你的高效任务管理分析平台，开启高质量协作之旅！</p>
+        {% if not session.get('user_id') %}
+            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">立即注册</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">已有账号</a>
+        {% else %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-warning btn-lg text-dark">进入任务栏</a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="container py-5">
+    <h2 class="text-center mb-5 fw-bold">我们能为你做什么？</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card feature-card text-center p-4 h-100">
+                <i class="fas fa-shield-alt feature-icon"></i>
+                <h4 class="fw-semibold">安全存储</h4>
+                <p>您的数据受到行业标准的加密保护，安全可信赖。</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card feature-card text-center p-4 h-100">
+                <i class="fas fa-users-cog feature-icon"></i>
+                <h4 class="fw-semibold">团队协作</h4>
+                <p>清晰掌控团队共享任务，提升协同效率。</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card feature-card text-center p-4 h-100">
+                <i class="fas fa-rocket feature-icon"></i>
+                <h4 class="fw-semibold">智能分析</h4>
+                <p>任务智能拆解与优先级分析，助你事半功倍。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="cta-section">
+    <div class="container">
+        <h2 class="mb-3">准备好开始了吗？</h2>
+        <p class="lead mb-4">加入我们，开启高效工作与智能协作的新时代。</p>
+        {% if not session.get('user_id') %}
+            <a href="{{ url_for('register') }}" class="btn btn-dark btn-lg">创建新账号</a>
+        {% else %}
+            <a href="{{ url_for('create_team') }}" class="btn btn-dark btn-lg">创建新团队</a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Flash Messages -->
+<div class="container py-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+</div>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
