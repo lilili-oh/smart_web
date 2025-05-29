@@ -17,10 +17,13 @@
 
 .
 
-  pip install Flask
-  pip install Flask-SQLAchemy
-  pip install Flask-Mail
-  pip install openai
+    pip install Flask
+  
+    pip install Flask-SQLAchemy
+    
+    pip install Flask-Mail
+    
+    pip install openai
   
 .
 
@@ -28,7 +31,7 @@
 
 .
 
-  ollama run deepseek-r1:1.5b
+    ollama run deepseek-r1:1.5b
 
 .
 
@@ -36,6 +39,6 @@
 
 .
 
-  python app.py
+    python app.py
 
 .
