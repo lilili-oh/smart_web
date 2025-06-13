@@ -9,7 +9,6 @@ import os
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import re
-import openai
 import requests
 import json
 import logging
@@ -30,47 +29,110 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
-app.config['OPENAI_API_KEY'] = 'your-openai-api-key'  # Replace with your actual API key
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
+app.config['XFYUN_SPARK_X1_API_KEY'] = os.environ.get('XFYUN_SPARK_X1_API_KEY')
+app.config['XFYUN_SPARK_X1_HTTP_URL'] = "https://spark-api-open.xf-yun.com/v2/chat/completions" # X1 的固定 URL
+
+# 调试信息打印
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+# logger.info(f"DEBUG: Loaded XFYUN_SPARK_X1_API_KEY: {app.config['XFYUN_SPARK_X1_API_KEY']}")
 
 # Initialize extensions
 db = SQLAlchemy(app)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-openai.api_key = app.config['OPENAI_API_KEY']
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ollama API 配置
-OLLAMA_MODEL = "deepseek-r1:1.5b"  # 使用本地部署的模型
-MAX_RETRIES = 3  # 最大重试次数
-RETRY_DELAY = 2  # 重试延迟（秒）
-
-def check_ollama_service():
-    """检查 Ollama 服务是否可用"""
-    try:
-        import subprocess
-        # 检查服务是否运行
-        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error(f"Ollama list 命令失败: {result.stderr}")
-            return False
-            
-        # 检查模型是否已下载
-        model_check = subprocess.run(['ollama', 'show', OLLAMA_MODEL], capture_output=True, text=True)
-        if model_check.returncode != 0:
-            logger.error(f"模型 {OLLAMA_MODEL} 未找到: {model_check.stderr}")
-            return False
-            
-        logger.info(f"Ollama 服务正常，模型 {OLLAMA_MODEL} 可用")
-        return True
-    except Exception as e:
-        logger.error(f"检查 Ollama 服务时出错: {str(e)}")
-        return False
 
 # Models
+
+class SparkX1Client:
+    def __init__(self, api_key, http_url):
+        # 注意：X1 的 API key 已经是 'Bearer YOUR_KEY' 这种格式
+        self.API_KEY = api_key
+        self.HTTP_URL = http_url
+
+    # 类似 X1_http.py 中的 get_answer
+    def get_spark_response(self, prompt_text):
+        full_response = ""  # 存储返回结果
+        is_first_content = True  # 首帧标识
+
+        try:
+            # 初始化请求体
+            headers = {
+                'Authorization': self.API_KEY, # X1 的鉴权方式
+                'content-type': "application/json"
+            }
+            body = {
+                "model": "x1",  # X1 模型名
+                "user": "flask_app_user", # 可以是任意用户标识
+                "messages": [{"role": "user", "content": prompt_text}], #
+                "stream": True, # 流式响应
+                # "tools": [ # 如果需要工具调用，可以保留，否则移除
+                #     {
+                #         "type": "web_search",
+                #         "web_search": {
+                #             "enable": True,
+                #             "search_mode":"deep"
+                #         }
+                #     }
+                # ]
+            }
+
+            response = requests.post(url=self.HTTP_URL, json=body, headers=headers, stream=True, timeout=90) # 增加超时时间
+            response.raise_for_status() # 检查 HTTP 错误状态码
+
+            for chunks in response.iter_lines(): #
+                # 打印返回的每帧内容 (仅用于调试，生产环境可移除)
+                # print(chunks)
+                if chunks and b'[DONE]' not in chunks: #
+                    try:
+                        # 讯飞星火流式响应的格式是 'data: {json}'
+                        data_line = chunks.decode('utf-8').strip()
+                        if data_line.startswith('data:'): #
+                            data_org = data_line[5:].strip() #
+                            chunk = json.loads(data_org) #
+                            
+                            # 检查 API 响应的错误码，X1_http.py 示例中没有，但一般建议加
+                            if 'code' in chunk.get('header', {}) and chunk['header']['code'] != 0:
+                                error_msg = f"Spark X1 API 调用失败，错误码: {chunk['header']['code']}, 详情: {chunk['header']['message']}"
+                                logger.error(error_msg)
+                                return json.dumps({"error": error_msg})
+
+                            text = chunk['choices'][0]['delta'] #
+
+                            # 判断思维链状态并输出 (X1_http.py 中的逻辑)
+                            if 'reasoning_content' in text and text['reasoning_content']: #
+                                logger.info(f"思维链内容: {text['reasoning_content']}")
+                                # 如果你想把思维链内容也保存到结果，可以加到 full_response
+                                # full_response += text['reasoning_content']
+
+                            # 判断最终结果状态并输出 (X1_http.py 中的逻辑)
+                            if 'content' in text and text['content']: #
+                                content = text['content'] #
+                                if is_first_content: #
+                                    logger.info("\n*******************以上为思维链内容，模型回复内容如下********************\n")
+                                    is_first_content = False #
+                                full_response += content #
+                    except json.JSONDecodeError as e:
+                        logger.error(f"解析讯飞星火流式响应时 JSON 错误: {e}, 原始行: {chunks.decode('utf-8')}")
+                        return json.dumps({"error": f"解析流式响应 JSON 错误: {str(e)}"})
+                    except KeyError as e:
+                        logger.error(f"讯飞星火响应结构不符合预期: {e}, 原始 chunk: {chunk}")
+                        return json.dumps({"error": f"讯飞星火响应结构错误: {str(e)}"})
+            return full_response
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"调用讯飞星火 X1 HTTP API 失败: {e}")
+            return json.dumps({"error": f"调用讯飞星火 X1 HTTP API 失败: {str(e)}"})
+        except Exception as e:
+            logger.error(f"调用讯飞星火 X1 时发生未知异常: {e}")
+            return json.dumps({"error": f"调用讯飞星火 X1 时发生未知异常: {str(e)}"})
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -109,6 +171,11 @@ class UserData(db.Model):
     team = db.relationship('Team', backref='tasks')
     team_editable = db.Column(db.Boolean, default=False)
 
+    # 新增字段：表示任务是否完成，默认为 False
+    is_completed = db.Column(db.Boolean, default=False, nullable=False)
+    # 新增字段：任务完成时间，默认为 None
+    completed_at = db.Column(db.DateTime, nullable=True)
+
     def get_time_remaining(self):
         if not self.deadline:
             return None
@@ -122,12 +189,16 @@ class UserData(db.Model):
         return f"{days}d {hours}h {minutes}m"
 
     def analyze_with_ai(self):
-        try:
-            # 首先检查 Ollama 服务是否可用
-            if not check_ollama_service():
-                return {"error": "Ollama 服务未运行或无法访问。请确保 Ollama 已启动并正在运行。"}
+        api_key = app.config['XFYUN_SPARK_X1_API_KEY']
+        spark_http_url = app.config['XFYUN_SPARK_X1_HTTP_URL']
 
-            logger.info(f"Starting AI analysis for task: {self.title}")
+        if not all([api_key, spark_http_url]):
+            error_msg = "讯飞星火 X1 API 凭据或 URL 未配置。请检查 .env 文件和 app.py 配置。"
+            logger.error(error_msg)
+            return {"error": error_msg}
+        
+        try:
+            logger.info(f"Starting AI analysis for task: {self.title} using Spark X1 HTTP API")
 
             # 构建提示词
             prompt = f"""
@@ -149,89 +220,52 @@ class UserData(db.Model):
             注意：请直接返回JSON格式的结果，不要包含其他内容。
             """
 
-            # 使用 subprocess 直接调用 Ollama
-            import subprocess
-            import json
-            import locale
-            import re
+            # 创建讯飞星火 X1 HTTP 客户端实例
+            spark_client = SparkX1Client(api_key, spark_http_url)
 
-            logger.info(f"Running Ollama with model: {OLLAMA_MODEL}")
-            logger.info(f"Prompt: {prompt}")
+            # 获取星火大模型的响应
+            response_str = spark_client.get_spark_response(prompt)
 
-            # 设置环境变量以使用 UTF-8 编码
-            my_env = os.environ.copy()
-            my_env["PYTHONIOENCODING"] = "utf-8"
+            logger.info(f"Spark X1 原始响应: {response_str}")
 
-            # 调用 Ollama
-            result = subprocess.run(
-                ['ollama', 'run', OLLAMA_MODEL, prompt],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='replace',
-                env=my_env,
-                timeout=60  # 设置60秒超时
-            )
-
-            logger.info(f"Ollama return code: {result.returncode}")
-            logger.info(f"Ollama stdout: {result.stdout}")
-            logger.info(f"Ollama stderr: {result.stderr}")
-
-            if result.returncode == 0:
-                if not result.stdout:
-                    error_msg = "Ollama 没有返回任何输出"
-                    logger.error(error_msg)
-                    return {"error": error_msg}
-
-                try:
-                    # 尝试从输出中提取 JSON 部分
-                    # 首先尝试匹配 ```json 标记中的内容
-                    json_match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', result.stdout)
-                    if json_match:
-                        json_str = json_match.group(1)
-                    else:
-                        # 如果没有找到 ```json 标记，尝试匹配任何有效的 JSON 对象
-                        # 使用更精确的正则表达式来匹配 JSON 对象
-                        json_match = re.search(r'(\{(?:[^{}]|(?:\{[^{}]*\}))*\})', result.stdout)
-                        if json_match:
-                            json_str = json_match.group(1)
-                        else:
-                            # 如果仍然没有找到，尝试清理输出并查找 JSON
-                            # 移除可能的非 JSON 文本
-                            cleaned_output = re.sub(r'^.*?(\{|\[)', r'\1', result.stdout, flags=re.DOTALL)
-                            cleaned_output = re.sub(r'(\}|\]).*$', r'\1', cleaned_output, flags=re.DOTALL)
-                            if cleaned_output and (cleaned_output.startswith('{') or cleaned_output.startswith('[')):
-                                json_str = cleaned_output
-                            else:
-                                raise json.JSONDecodeError("No valid JSON found in output", result.stdout, 0)
-
-                    # 清理 JSON 字符串中可能的非 JSON 字符
-                    json_str = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', json_str)
-
-                    # 尝试解析 JSON
-                    analysis_json = json.loads(json_str)
-                    self.ai_analysis = json.dumps(analysis_json, ensure_ascii=False)
-                    db.session.commit()
-                    logger.info("AI analysis saved to database")
-                    return analysis_json
-                except json.JSONDecodeError as e:
-                    error_msg = f"无法解析 Ollama 输出为 JSON: {str(e)}"
-                    logger.error(error_msg)
-                    logger.error(f"原始输出: {result.stdout}")
-                    # 如果解析失败，保存原始文本
-                    self.ai_analysis = result.stdout
-                    db.session.commit()
-                    logger.info("AI analysis saved as text to database")
-                    return {"error": error_msg}
-            else:
-                error_msg = f"Ollama 运行失败: {result.stderr}"
+            if not response_str:
+                error_msg = "讯飞星火 X1 没有返回任何输出"
                 logger.error(error_msg)
                 return {"error": error_msg}
 
-        except subprocess.TimeoutExpired:
-            error_msg = "Ollama 运行超时"
-            logger.error(error_msg)
-            return {"error": error_msg}
+            try:
+                # 尝试从输出中提取 JSON 部分 (保留原有逻辑，以防模型输出包含额外文本)
+                json_match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', response_str)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    json_match = re.search(r'(\{(?:[^{}]|(?:\{[^{}]*\}))*\})', response_str)
+                    if json_match:
+                        json_str = json_match.group(1)
+                    else:
+                        cleaned_output = re.sub(r'^.*?(\{|\[)', r'\1', response_str, flags=re.DOTALL)
+                        cleaned_output = re.sub(r'(\}|\]).*$', r'\1', cleaned_output, flags=re.DOTALL)
+                        if cleaned_output and (cleaned_output.startswith('{') or cleaned_output.startswith('[')):
+                            json_str = cleaned_output
+                        else:
+                            raise json.JSONDecodeError("No valid JSON found in output", response_str, 0)
+
+                json_str = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', json_str)
+
+                analysis_json = json.loads(json_str)
+                self.ai_analysis = json.dumps(analysis_json, ensure_ascii=False)
+                db.session.commit()
+                logger.info("AI analysis saved to database")
+                return analysis_json
+            except json.JSONDecodeError as e:
+                error_msg = f"无法解析讯飞星火 X1 输出为 JSON: {str(e)}"
+                logger.error(error_msg)
+                logger.error(f"原始输出: {response_str}")
+                self.ai_analysis = response_str
+                db.session.commit()
+                logger.info("AI analysis saved as text to database")
+                return {"error": error_msg}
+
         except Exception as e:
             error_msg = f"AI 分析过程出错: {str(e)}"
             logger.error(error_msg)
@@ -436,20 +470,65 @@ def master():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    user = User.query.get_or_404(session['user_id'])
-    
-    teams = user.teams
-    tasks = user_data = UserData.query.filter(
-        or_(
-            UserData.user_id == user.id,
-            and_(
-                # UserData.team_editable == True,
-                UserData.team_id.in_([team.id for team in user.teams])
-            )
-        )
-    ).order_by(UserData.created_at.desc()).all()
+    user_id = session.get('user_id')
+    if not user_id:
+        flash('请先登录！', 'danger')
+        return redirect(url_for('login'))
 
-    return render_template('dashboard.html', user=user, user_data=tasks)
+    user = User.query.get_or_404(user_id)
+
+    # 1. 查询用户自己的任务
+    # 使用 .all() 获取所有结果，并按创建时间倒序排列
+    user_own_tasks = UserData.query.filter_by(user_id=user_id).order_by(UserData.created_at.desc()).all()
+    logger.info(f"User {user.username} (ID: {user_id}) has {len(user_own_tasks)} personal tasks.")
+
+    # 2. 查询用户所属团队的任务（如果团队任务可编辑，并且用户是该团队成员）
+    user_teams = user.teams # 获取用户所属的所有团队
+    team_tasks = []
+    
+    # 获取用户所属团队的所有任务
+    if user_teams:
+        team_ids = [team.id for team in user_teams]
+        # 查找属于这些团队且 team_editable 为 True 的任务
+        tasks_from_teams = UserData.query.filter(
+            and_(
+                UserData.team_id.in_(team_ids),
+                UserData.team_editable == True
+            )
+        ).order_by(UserData.created_at.desc()).all()
+        team_tasks.extend(tasks_from_teams)
+    
+    logger.info(f"User {user.username} (ID: {user_id}) is in {len(user_teams)} teams, and found {len(team_tasks)} editable team tasks.")
+
+
+    # 3. 合并任务列表并去重（如果一个任务可能同时是个人任务又是团队任务，尽管通常不会这样设计）
+    # 为了确保显示不重复且按最新创建时间排序，可以先转为集合去重再转回列表，然后重新排序
+    # 这里为了简化，我们直接合并，如果您的业务逻辑确保了个人任务和团队任务是互斥的，则不需要复杂去重
+    
+    # 简单的合并，如果需要更复杂的去重和排序，请调整
+    all_user_related_tasks = user_own_tasks + team_tasks
+    
+    # 如果需要确保唯一性并按创建时间排序，可以这样做：
+    # task_ids = set()
+    # unique_tasks = []
+    # for task in all_user_related_tasks:
+    #     if task.id not in task_ids:
+    #         unique_tasks.append(task)
+    #         task_ids.add(task.id)
+    # # 重新排序合并后的任务列表
+    # unique_tasks.sort(key=lambda t: t.created_at, reverse=True)
+    # user_data = unique_tasks
+    
+    # 如果简单合并即可，那么直接用此行：
+    user_data = sorted(all_user_related_tasks, key=lambda t: t.created_at, reverse=True)
+
+
+    return render_template('dashboard.html', 
+                           user=user, 
+                           user_data=user_data, # 将处理好的任务列表传递给 user_data
+                           user_teams=user_teams, # 如果dashboard页面还需要显示团队信息，可以保留
+                           team_tasks=team_tasks # 也可以保留，但dashboard.html只迭代 user_data
+                          )
 
 @app.route('/add_data', methods=['GET', 'POST'])
 @login_required
@@ -753,6 +832,51 @@ def analyze_task(data_id):
     
     analysis_result = data.analyze_with_ai()
     return jsonify(analysis_result)
+
+@app.route('/complete_data/<int:data_id>', methods=['POST'])
+@login_required
+def complete_data(data_id):
+    data = UserData.query.get_or_404(data_id)
+    user = User.query.get_or_404(session['user_id'])
+
+    # 使用一个标志来判断权限是否被拒绝
+    permission_denied = False
+
+    if data.team_id:
+        # 如果任务属于某个队伍，当前用户必须在队伍中
+        # 这里的 user.teams 不再需要 .all()，因为它已经是列表了
+        if data.team not in user.teams:
+            permission_denied = True
+            logger.warning(f"Permission denied: User {user.id} (username: {user.username}) tried to complete team task {data_id} (team {data.team_id}) but is not in team.")
+    else:
+        # 非队伍任务，仅作者可完成
+        if data.user_id != user.id:
+            permission_denied = True
+            logger.warning(f"Permission denied: User {user.id} (username: {user.username}) tried to complete personal task {data_id} (owner {data.user_id}) but is not the owner.")
+
+    if permission_denied:
+        # 如果权限被拒绝，直接返回 JSON 格式的错误信息和 403 状态码
+        # 这是为了确保前端 AJAX 请求能够正确解析响应
+        return jsonify({"success": False, "message": "您没有权限完成此任务。"}), 403
+
+    try:
+        data.is_completed = True
+        data.completed_at = datetime.utcnow() # 记录完成时间
+        db.session.commit()
+
+        # 对于 AJAX 请求，通常不需要 flash 消息，因为前端会处理提示
+        # flash('任务已成功标记为完成！', 'success') 
+
+        logger.info(f"Task {data_id} marked as completed by user {user.id}")
+        return jsonify({"success": True, "message": "任务已成功标记为完成！"})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error marking task {data_id} as completed: {e}")
+
+        # 对于 AJAX 请求，通常不需要 flash 消息
+        # flash('标记任务完成时发生错误。', 'danger') 
+
+        return jsonify({"success": False, "message": f"标记任务完成时发生错误: {e}"}), 500
 
 # Error handlers
 @app.errorhandler(404)
