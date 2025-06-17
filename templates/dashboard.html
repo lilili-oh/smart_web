@@ -15,83 +15,73 @@
         </div>
     </div>
 
+    {# Filter Buttons Section #}
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-center">
+            <div class="btn-group" role="group" aria-label="Task filters">
+                <button type="button" class="btn btn-outline-primary active" data-filter="all">所有任务</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="private">私人任务</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="team">团队任务</button>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         {% for data in user_data %}
-        <div class="col-md-6 mb-4">
+        <div class="col-md-6 mb-4 task-card-col" data-task-type="{{ 'team' if data.team else 'private' }}">
             <div class="card task-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="card-title mb-0">{{ data.title }}</h5>
-                        <span class="badge bg-primary rounded-pill">标签</span>
-                    </div>
-                    <p class="card-text">{{ data.content }}</p>
-                    <div class="task-meta mb-3">
-                        <p class="card-text mb-2">
-                            <i class="far fa-clock me-2"></i>
-                            <small class="text-muted">开始时间: {{ data.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-                        </p>
-                        {% if data.deadline %}
-                        <p class="card-text mb-2">
-                            <i class="far fa-calendar-alt me-2"></i>
-                            <small class="text-muted">DDL: {{ data.deadline.strftime('%Y-%m-%d %H:%M') }}</small>
-                        </p>
-                        <p class="card-text">
-                            <i class="fas fa-hourglass-half me-2"></i>
-                            <small class="text-muted">剩余时间: <span class="countdown" data-deadline="{{ data.deadline.strftime('%Y-%m-%d %H:%M:%S') }}">Loading...</span></small>
-                        </p>
-                        {% endif %}
-                    </div>
-
-                    <p><strong>归属团队:</strong> {{ data.team.name if data.team else 'No team assigned' }}</p>
-                    <p>
-                        {% if data.team_editable %}
-                            <span class="badge bg-success">队伍可编辑</span>
-                        {% endif %}
-                    </p>
-                    
-                    <div class="ai-analysis-section mt-3">
-                        <button class="btn btn-info btn-sm analyze-btn" data-task-id="{{ data.id }}">
-                            <i class="fas fa-robot me-2"></i>AI分析
-                        </button>
-                        <div id="analysis-result-{{ data.id }}" class="analysis-result mt-3" style="display: none;">
-                            <div class="card analysis-card">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-3 text-primary">
-                                        <i class="fas fa-brain me-2"></i>AI分析
-                                    </h6>
-                                    <div class="analysis-content">
-                                        <div class="analysis-item">
-                                            <p><strong><i class="fas fa-chart-line me-2"></i>复杂度：</strong><span class="complexity"></span></p>
-                                        </div>
-                                        <div class="analysis-item">
-                                            <p><strong><i class="far fa-clock me-2"></i>预计时间：</strong><span class="estimated-time"></span></p>
-                                        </div>
-                                        <div class="analysis-item">
-                                            <p><strong><i class="fas fa-flag me-2"></i>优先级：</strong><span class="priority"></span></p>
-                                        </div>
-                                        <div class="steps-section">
-                                            <p><strong><i class="fas fa-list-ol me-2"></i>完成步骤：</strong></p>
-                                            <ul class="steps-list"></ul>
-                                        </div>
-                                        <div class="challenges-section">
-                                            <p><strong><i class="fas fa-exclamation-triangle me-2"></i>可能挑战：</strong></p>
-                                            <ul class="challenges-list"></ul>
-                                        </div>
-                                        <div class="solutions-section">
-                                            <p><strong><i class="fas fa-lightbulb me-2"></i>解决方案：</strong></p>
-                                            <ul class="solutions-list"></ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="card-body d-flex flex-column"> {# Add d-flex and flex-column here #}
+                    <div class="flex-grow-1"> {# This div will take up available space #}
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">{{ data.title }}</h5>
+                            {# Dynamic Tag Display #}
+                            {% if data.team %}
+                            <span class="badge bg-info rounded-pill">团队任务</span>
+                            {% else %}
+                            <span class="badge bg-secondary rounded-pill">私人任务</span>
+                            {% endif %}
                         </div>
-                    </div>
+                        <p class="card-text">{{ data.content }}</p>
+                        <div class="task-meta mb-3">
+                            <p class="card-text mb-2">
+                                <i class="far fa-clock me-2"></i>
+                                <small class="text-muted">创建于: {{ data.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </p>
+                            {% if data.is_completed %}
+                            <p class="card-text mb-2">
+                                <i class="fas fa-check-circle me-2 text-success"></i>
+                                <small class="text-muted">已于 {{ data.completed_at.strftime('%Y-%m-%d %H:%M') }} 完成</small>
+                            </p>
+                            {% elif data.deadline %}
+                            <p class="card-text mb-2">
+                                <i class="far fa-calendar-alt me-2"></i>
+                                <small class="text-muted">截止日期: {{ data.deadline.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </p>
+                            <p class="card-text">
+                                <i class="fas fa-hourglass-half me-2"></i>
+                                <small class="text-muted">剩余时间: <span class="countdown" id="countdown-{{ data.id }}" data-deadline="{{ data.deadline.isoformat() }}">Loading...</span></small>
+                            </p>
+                            {% else %}
+                            <p class="card-text mb-2">
+                                <i class="far fa-calendar-alt me-2"></i>
+                                <small class="text-muted">未设置截止日期</small>
+                            </p>
+                            {% endif %}
+                        </div>
 
-                    <div class="task-actions mt-3">
+                        <p><strong>归属团队:</strong> {{ data.team.name if data.team else '未分配团队' }}</p>
+                        <p>
+                            {% if data.team_editable %}
+                                <span class="badge bg-success">队伍可编辑</span>
+                            {% endif %}
+                        </p>
+                    </div> {# End of flex-grow-1 #}
+
+                    <div class="task-actions mt-3 pt-3 border-top"> {# Add pt-3 and border-top here #}
                         <a href="{{ url_for('edit_data', data_id=data.id) }}" class="btn btn-warning btn-sm">
                             <i class="fas fa-edit me-1"></i>编辑
                         </a>
-                        <a href="{{ url_for('delete_data', data_id=data.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this task?')">
+                        <a href="{{ url_for('delete_data', data_id=data.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('是否确实要删除此任务？')">
                             <i class="fas fa-trash-alt me-1"></i>删除
                         </a>
                         {# 新增的完成任务按钮 #}
@@ -99,11 +89,9 @@
                         <button class="btn btn-success btn-sm complete-btn" data-task-id="{{ data.id }}">
                             <i class="fas fa-check-circle me-1"></i>完成任务
                         </button>
-                        {% else %}
-                        <p class="card-text mb-2 text-center" style="flex-grow: 1;">
-                            <i class="fas fa-check-circle me-2 text-success"></i>
-                            已完成
-                        </p>
+                        <button class="btn btn-info btn-sm analyze-btn" data-task-id="{{ data.id }}" data-bs-toggle="modal" data-bs-target="#analysisModal">
+                            <i class="fas fa-robot me-2"></i>AI分析
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -112,6 +100,46 @@
         {% endfor %}
     </div>
 </div>
+
+<div class="modal fade" id="analysisModal" tabindex="-1" aria-labelledby="analysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="analysisModalLabel"><i class="fas fa-brain me-2"></i>AI分析结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="analysis-content">
+                    <div class="analysis-item">
+                        <p><strong><i class="fas fa-chart-line me-2"></i>复杂度：</strong><span class="complexity"></span></p>
+                    </div>
+                    <div class="analysis-item">
+                        <p><strong><i class="far fa-clock me-2"></i>预计时间：</strong><span class="estimated-time"></span></p>
+                    </div>
+                    <div class="analysis-item">
+                        <p><strong><i class="fas fa-flag me-2"></i>优先级：</strong><span class="priority"></span></p>
+                    </div>
+                    <div class="steps-section">
+                        <p><strong><i class="fas fa-list-ol me-2"></i>完成步骤：</strong></p>
+                        <ul class="steps-list"></ul>
+                    </div>
+                    <div class="challenges-section">
+                        <p><strong><i class="fas fa-exclamation-triangle me-2"></i>可能挑战：</strong></p>
+                        <ul class="challenges-list"></ul>
+                    </div>
+                    <div class="solutions-section">
+                        <p><strong><i class="fas fa-lightbulb me-2"></i>解决方案：</strong></p>
+                        <ul class="solutions-list"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script>
 // 倒计时功能
@@ -152,16 +180,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // AI分析按钮功能
     const analyzeButtons = document.querySelectorAll('.analyze-btn');
+    const analysisModal = new bootstrap.Modal(document.getElementById('analysisModal'));
+    const modalAnalysisContent = document.querySelector('#analysisModal .analysis-content');
     
     analyzeButtons.forEach(button => {
         button.addEventListener('click', async function() {
             const taskId = this.dataset.taskId;
-            const resultDiv = document.getElementById(`analysis-result-${taskId}`);
-            const analysisContent = resultDiv.querySelector('.analysis-content');
             
             // Show loading state
             this.disabled = true;
-            this.textContent = 'Analyzing...';
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 分析中...'; 
             
             try {
                 const response = await fetch(`/analyze_task/${taskId}`, {
@@ -177,31 +205,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error);
                 }
                 
-                // Update the analysis content
-                analysisContent.querySelector('.complexity').textContent = data.complexity;
-                analysisContent.querySelector('.estimated-time').textContent = data.estimated_time;
-                analysisContent.querySelector('.priority').textContent = data.priority;
+                // Update the analysis content in the modal
+                modalAnalysisContent.querySelector('.complexity').textContent = data.complexity;
+                modalAnalysisContent.querySelector('.estimated-time').textContent = data.estimated_time;
+                modalAnalysisContent.querySelector('.priority').textContent = data.priority;
                 
                 // Update steps
-                const stepsList = analysisContent.querySelector('.steps-list');
+                const stepsList = modalAnalysisContent.querySelector('.steps-list');
                 stepsList.innerHTML = data.steps.map(step => `<li>${step}</li>`).join('');
                 
                 // Update challenges
-                const challengesList = analysisContent.querySelector('.challenges-list');
+                const challengesList = modalAnalysisContent.querySelector('.challenges-list');
                 challengesList.innerHTML = data.challenges.map(challenge => `<li>${challenge}</li>`).join('');
                 
                 // Update solutions
-                const solutionsList = analysisContent.querySelector('.solutions-list');
+                const solutionsList = modalAnalysisContent.querySelector('.solutions-list');
                 solutionsList.innerHTML = data.solutions.map(solution => `<li>${solution}</li>`).join('');
                 
-                // Show the result
-                resultDiv.style.display = 'block';
+                // Show the modal
+                analysisModal.show();
+
             } catch (error) {
                 alert('Error during analysis: ' + error.message);
             } finally {
                 // Reset button state
                 this.disabled = false;
-                this.textContent = 'Analyze with AI';
+                this.innerHTML = '<i class="fas fa-robot me-2"></i>AI分析'; 
             }
         });
     });
@@ -239,6 +268,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error completing task:', error);
                 });
             }
+        });
+    });
+
+    // Filtering tasks
+    const filterButtons = document.querySelectorAll('.btn-group .btn');
+    const taskCards = document.querySelectorAll('.task-card-col');
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons and add to the clicked one
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+
+            const filterType = this.dataset.filter;
+
+            taskCards.forEach(card => {
+                const taskType = card.dataset.taskType;
+                if (filterType === 'all' || filterType === taskType) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         });
     });
 });
@@ -307,12 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background: linear-gradient(45deg, var(--primary-color), var(--info-color));
 }
 
-/* AI Analysis Section */
-.ai-analysis-section {
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-    padding-top: 1rem;
-}
-
+/* AI Analysis Section (within modal now) */
 .analysis-card {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border: none;
@@ -364,6 +411,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .task-actions {
     display: flex;
     gap: 0.5rem;
+    margin-top: auto; /* Push to the bottom */
 }
 
 .task-actions .btn {
