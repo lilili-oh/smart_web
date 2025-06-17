@@ -6,14 +6,20 @@
   <title>任务管理系统 - 登录</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
+    /* 统一的颜色变量 - 保持与 register.html 的配色一致 */
     :root {
-      --primary-color: #00796b;
-      --primary-light: #26a69a;
-      --primary-dark: #004d40;
-      --accent-color: #ff4081;
-      --text-color: #333;
-      --text-light: #666;
-      --background: #f8fdff;
+        --primary-color: #4a90e2; /* 注册页面的主蓝色 */
+        --secondary-color: #6c757d; /* 注册页面的次要颜色 */
+        --success-color: #28a745;
+        --danger-color: #dc3545;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8; /* 注册页面的信息蓝色 */
+        --light-color: #f8f9fa;
+        --dark-color: #343a40; /* 注册页面的深色文本 */
+        --white: #ffffff; /* 定义白色变量 */
+        --card-shadow: rgba(0,0,0,0.1); /* 保持柔和阴影 */
+        --input-border-color: #e9ecef; /* 输入框边框色 */
+        --button-shadow: rgba(74,144,226,0.3); /* 按钮阴影 */
     }
 
     * {
@@ -24,7 +30,7 @@
 
     body {
       font-family: 'Microsoft YaHei', Arial, sans-serif;
-      background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+      background-color: var(--white); /* **修改点1：页面背景色改为白色** */
       margin: 0;
       padding: 0;
       min-height: 100vh;
@@ -35,42 +41,37 @@
 
     .container {
       display: flex;
-      width: 1000px;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      width: 900px;
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px var(--card-shadow);
       overflow: hidden;
       animation: fadeIn 0.5s ease-out;
+      padding: 0;
     }
 
     .left-panel {
       flex: 1;
-      padding: 50px;
-      background: var(--background);
+      padding: 40px;
+      background: linear-gradient(135deg, var(--primary-color), var(--info-color)); /* 左侧面板背景保持蓝色渐变 */
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       position: relative;
       overflow: hidden;
+      color: var(--white);
     }
 
     .left-panel::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(0,121,107,0.1), rgba(38,166,154,0.1));
-      z-index: 0;
+      content: none;
     }
 
     .logo {
       font-size: 32px;
       font-weight: bold;
-      color: var(--primary-color);
-      margin-bottom: 15px;
+      color: var(--white);
+      margin-bottom: 10px;
       text-align: center;
       position: relative;
       z-index: 1;
@@ -78,42 +79,41 @@
 
     .logo-en {
       font-size: 16px;
-      color: var(--primary-light);
+      color: rgba(255, 255, 255, 0.8);
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
       position: relative;
       z-index: 1;
     }
 
-    .illustration {
-      width: 80%;
-      max-width: 300px;
-      margin-top: 20px;
-      position: relative;
-      z-index: 1;
-    }
+    /* .illustration 样式块已删除 */
 
     .right-panel {
       flex: 1;
-      padding: 50px;
-      background: white;
+      padding: 40px;
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .welcome {
       font-size: 28px;
-      color: var(--primary-color);
+      color: var(--dark-color);
       margin-bottom: 10px;
-      font-weight: 600;
+      font-weight: 700;
+      text-align: center;
     }
 
     .subtitle {
       font-size: 16px;
-      color: var(--text-light);
-      margin-bottom: 40px;
+      color: var(--secondary-color);
+      margin-bottom: 30px;
+      text-align: center;
     }
 
     .form-group {
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       position: relative;
     }
 
@@ -122,21 +122,23 @@
       left: 15px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--primary-light);
+      color: var(--primary-color);
+      font-size: 1rem;
     }
 
     input {
       width: 100%;
-      padding: 15px 15px 15px 45px;
-      border: 2px solid #e0e0e0;
-      border-radius: 10px;
+      padding: 12px 15px 12px 45px;
+      border: 1px solid var(--input-border-color);
+      border-radius: 8px;
       font-size: 15px;
       transition: all 0.3s ease;
+      background-color: #f8f9fa;
     }
 
     input:focus {
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(0,121,107,0.1);
+      box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
       outline: none;
     }
 
@@ -144,8 +146,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
       font-size: 14px;
+      color: var(--secondary-color);
     }
 
     .remember-me {
@@ -157,40 +160,44 @@
     .remember-me input[type="checkbox"] {
       width: auto;
       margin: 0;
+      accent-color: var(--primary-color);
     }
 
     .forgot-password {
       color: var(--primary-color);
       text-decoration: none;
       transition: color 0.3s ease;
+      font-weight: 500;
     }
 
     .forgot-password:hover {
-      color: var(--primary-dark);
+      color: var(--info-color);
     }
 
     .login-btn {
       width: 100%;
-      padding: 15px;
-      background: linear-gradient(45deg, var(--primary-color), var(--primary-light));
+      padding: 14px;
+      background: linear-gradient(45deg, var(--primary-color), var(--info-color));
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
       position: relative;
       overflow: hidden;
+      box-shadow: 0 4px 10px var(--button-shadow);
     }
 
     .login-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0,121,107,0.3);
+      box-shadow: 0 6px 15px var(--button-shadow);
     }
 
     .login-btn:active {
       transform: translateY(0);
+      box-shadow: 0 2px 5px var(--button-shadow);
     }
 
     .login-btn::after {
@@ -212,9 +219,9 @@
     }
 
     .footer {
-      margin-top: 30px;
+      margin-top: 25px;
       font-size: 14px;
-      color: var(--text-light);
+      color: var(--secondary-color);
       text-align: center;
     }
 
@@ -226,24 +233,41 @@
     }
 
     .footer a:hover {
-      color: var(--primary-dark);
+      color: var(--info-color);
     }
 
-    .error-message {
-      background: #ffebee;
-      color: #c62828;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    /* Flash Messages 样式 */
+    .alert {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        animation: slideIn 0.3s ease-out;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
-    .error-message i {
-      font-size: 16px;
+    .alert-danger {
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
     }
+    .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #a5d6a7;
+    }
+    .alert-info {
+        background: #e3f2fd;
+        color: #1565c0;
+        border: 1px solid #90caf9;
+    }
+
+    .alert i {
+        font-size: 1.25rem;
+    }
+
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
@@ -259,6 +283,11 @@
         transform: scale(100, 100);
         opacity: 0;
       }
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
     }
 
     @media (max-width: 768px) {
@@ -287,16 +316,19 @@
     <div class="left-panel">
       <div class="logo">任务管理平台</div>
       <div class="logo-en">Task Manager Platform</div>
-
-    </div>
+      </div>
 
     <div class="right-panel">
-      {% if message %}
-        <div class="error-message">
-          <i class="fas fa-exclamation-circle"></i>
-          {{ message }}
-        </div>
-      {% endif %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+              {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}">
+                      <i class="fas {% if category == 'danger' %}fa-exclamation-circle{% elif category == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+                      {{ message }}
+                  </div>
+              {% endfor %}
+          {% endif %}
+      {% endwith %}
 
       <div class="welcome">Welcome!</div>
       <div class="subtitle">欢迎，请登录系统</div>
@@ -317,7 +349,7 @@
             <input type="checkbox" name="remember">
             <span>记住密码</span>
           </label>
-          <a href="#" class="forgot-password">忘记密码?</a>
+          <a href="{{ url_for('reset_password_request') }}" class="forgot-password">忘记密码?</a>
         </div>
 
         <button type="submit" class="login-btn">登录</button>
