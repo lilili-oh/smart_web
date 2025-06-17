@@ -9,6 +9,12 @@
             background-color: #f3f6f9;
             font-family: 'Segoe UI', sans-serif;
         }
+        .body-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #1565c0 ;
+        }
         .team-card {
             background-color: white;
             border-radius: 16px;
@@ -17,45 +23,86 @@
             margin-bottom: 2rem;
         }
         .team-name {
-            font-size: 1.5rem;
+            font-size: 2.0rem;
             font-weight: 600;
+            color: #4a90e2;
         }
-        .member-list li {
+        .member-list li, .task-list li {
             margin-bottom: 0.3rem;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            color: #343a40;
+        }
+        .list-group-item {
+            border-color: #e9ecef;
+        }
+        .no-data-message {
+            color: #6c757d;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
 <div class="container py-5">
-    <h1 class="mb-4 text-center">My Teams</h1>
+    <h1 class="body-title">我的团队概况</h1>
 
     {% if teams %}
         {% for team in teams %}
             <div class="team-card">
                 <div class="team-name">{{ team.name }}</div>
-                <p class="text-muted">{{ team.description or "No description provided." }}</p>
+                <p class="text-muted">{{ team.description or "暂无描述。" }}</p>
 
-                <h6 class="mt-3">Members:</h6>
-                <ul class="list-group member-list">
-                    {% for member in team.members %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ member.username }}</strong>
-                                <div class="text-muted small">{{ member.email }}</div>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
+                <h6 class="section-title">成员:</h6>
+                {% if team.members %}
+                    <ul class="list-group member-list">
+                        {% for member in team.members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ member.username }}</strong>
+                                    <div class="text-muted small">{{ member.email }}</div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="no-data-message">暂无团队成员。</p>
+                {% endif %}
+
+                <h6 class="section-title">团队任务:</h6>
+                {% if team.tasks %}
+                    <ul class="list-group task-list">
+                        {% for task in team.tasks %}
+                            <li class="list-group-item">
+                                <div>
+                                    <strong>任务标题:</strong> {{ task.title }}
+                                </div>
+                                <div class="text-muted small">
+                                    <strong>创建时间:</strong> {{ task.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </div>
+                                <div class="text-muted small">
+                                    <strong>截止时间:</strong> {{ task.deadline.strftime('%Y-%m-%d %H:%M') if task.deadline else '未设置' }}
+                                </div>
+                                <div class="text-muted small">
+                                    <strong>任务状态:</strong> {{ '已完成' if task.is_completed else '未完成' }}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="no-data-message">暂无属于此团队的任务。</p>
+                {% endif %}
             </div>
         {% endfor %}
     {% else %}
-        <p class="text-center text-muted">You haven't joined any teams yet.</p>
+        <p class="text-center text-muted">您尚未加入任何团队。</p>
     {% endif %}
 
 </div>
 
 </body>
 </html>
-
-
