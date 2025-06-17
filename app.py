@@ -909,13 +909,4 @@ if __name__ == '__main__':
         # db.drop_all()
         db.create_all()
 
-        # 👇 只运行一次，用于设置管理员用户
-        admin = User.query.filter_by(username='果蝇').first()
-        if admin:
-            admin.is_admin = True
-            db.session.commit()
-            print(f"✅ 设置 {admin.username} 为管理员")
-        else:
-            print("❌ 没有找到用户 '果蝇'")
-
     app.run(debug=True)# 修改代码后自动重启程序
