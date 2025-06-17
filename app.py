@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, g
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, and_, create_engine
+from sqlalchemy import or_, and_
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -12,8 +12,6 @@ import re
 import requests
 import json
 import logging
-import time
-import psycopg2
 from dotenv import load_dotenv
 import os
 
@@ -32,6 +30,14 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 app.config['XFYUN_SPARK_X1_API_KEY'] = os.environ.get('XFYUN_SPARK_X1_API_KEY')
 app.config['XFYUN_SPARK_X1_HTTP_URL'] = "https://spark-api-open.xf-yun.com/v2/chat/completions" # X1 的固定 URL
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,       # 连接池中保持的连接数，可以根据并发用户量调整
+    'max_overflow': 20,    # 允许超过 pool_size 的额外连接数，处理短期高峰
+    'pool_recycle': 3600,  # 连接在池中保持打开的最大秒数（1小时），防止数据库超时断开
+    'pool_pre_ping': True, # 每次从池中取出连接时，先测试其可用性
+    'pool_timeout': 30     # 获取连接的超时时间（秒）
+}
+print(f"DEBUG: DATABASE_URL being used: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
 # 调试信息打印
 # logging.basicConfig(level=logging.INFO)
@@ -319,23 +325,23 @@ def register():
 
         # Input validation
         if not username or not email or not password:
-            flash('All fields are required.', 'danger')
+            flash('所有字段均为必填字段。', 'danger')
             return render_template('register.html')
 
         if not validate_password(password):
-            flash('Password must be at least 8 characters long and contain uppercase, lowercase, and numbers.', 'danger')
+            flash('密码必须至少包含8个字符，并且包含大写字母、小写字母和数字。', 'danger')
             return render_template('register.html')
 
         if password != confirm_password:
-            flash('Passwords do not match.', 'danger')
+            flash('密码不匹配。', 'danger')
             return render_template('register.html')
 
         if User.query.filter_by(username=username).first():
-            flash('Username already exists.', 'danger')
+            flash('用户已存在。', 'danger')
             return render_template('register.html')
 
         if User.query.filter_by(email=email).first():
-            flash('Email already registered.', 'danger')
+            flash('电子邮件已被注册。', 'danger')
             return render_template('register.html')
 
         # Create new user
@@ -345,12 +351,12 @@ def register():
         try:
             db.session.add(new_user)
             db.session.commit()
-            flash('Registration successful! Please log in.', 'success')
+            flash('注册成功！请登录。', 'success')
             return redirect(url_for('login'))
         except Exception as e:
             db.session.rollback()
-            flash('An error occurred during registration.', 'danger')
-            logging.error(f"Error during registration: {e}")
+            flash('注册发生出错。', 'danger')
+            logging.error(f"注册时错误: {e}")
             return render_template('register.html')
 
     return render_template('register.html')
@@ -369,19 +375,21 @@ def login():
             if remember:
                 session.permanent = True
                 app.permanent_session_lifetime = timedelta(days=7)
-            flash('Login successful!', 'success')
+            flash('登录成功！', 'success')
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid username or password.', 'danger')
+            flash('用户名或密码无效。', 'danger')
 
     return render_template('login.html')
 
 
 #团队概况功能
-@app.route('/summary', methods=['GET', 'POST'])
+@app.route('/summary')
 @login_required
 def summary():
-    return render_template('summary.html')  # 渲染队伍页面
+    # Query all teams and eager load their members and tasks
+    teams = Team.query.options(db.joinedload(Team.members), db.joinedload(Team.tasks)).all()
+    return render_template('summary.html', teams=teams) # 渲染队伍页面
 
 
 # 组队功能
@@ -402,7 +410,7 @@ def create_team():
         db.session.add(team)
         db.session.commit()
 
-        flash('Team created successfully!', 'success')
+        flash('团队创建成功！', 'success')
         return redirect(url_for('profile'))
 
     return render_template('team.html')
@@ -412,7 +420,7 @@ def create_team():
 @login_required
 def logout():
     session.clear()
-    flash('You have been logged out.', 'info')
+    flash('您已登出。', 'info')
     return redirect(url_for('home'))
 
 # 加入队伍功能
@@ -451,12 +459,12 @@ def leave_team(team_id):
         user.teams.remove(team)
         try:
             db.session.commit()
-            flash(f'You have left the team {team.name}.', 'success')
+            flash(f'您已离开团队：{team.name}.', 'success')
         except Exception as e:
             db.session.rollback()
-            flash('Error leaving the team.', 'danger')
+            flash('离开队伍出错。', 'danger')
     else:
-        flash('You are not a member of this team.', 'warning')
+        flash('您不是此团队的成员。', 'warning')
 
     return redirect(url_for('profile'))
 
@@ -478,15 +486,23 @@ def dashboard():
     user = User.query.get_or_404(user_id)
 
     # 1. 查询用户自己的任务
-    # 使用 .all() 获取所有结果，并按创建时间倒序排列
-    user_own_tasks = UserData.query.filter_by(user_id=user_id).order_by(UserData.created_at.desc()).all()
+    # 这里的个人任务是指那些没有分配给任何团队，或者分配给了团队但 team_editable 为 False 的任务
+    # 这样可以避免与团队任务重复
+    user_own_tasks = UserData.query.filter(
+        and_(
+            UserData.user_id == user_id,
+            or_(
+                UserData.team_id == None,  # 个人任务，没有团队ID
+                UserData.team_editable == False # 或者有团队ID，但不可由团队成员编辑（仍是个人任务性质）
+            )
+        )
+    ).order_by(UserData.created_at.desc()).all()
     logger.info(f"User {user.username} (ID: {user_id}) has {len(user_own_tasks)} personal tasks.")
 
     # 2. 查询用户所属团队的任务（如果团队任务可编辑，并且用户是该团队成员）
     user_teams = user.teams # 获取用户所属的所有团队
     team_tasks = []
     
-    # 获取用户所属团队的所有任务
     if user_teams:
         team_ids = [team.id for team in user_teams]
         # 查找属于这些团队且 team_editable 为 True 的任务
@@ -500,34 +516,22 @@ def dashboard():
     
     logger.info(f"User {user.username} (ID: {user_id}) is in {len(user_teams)} teams, and found {len(team_tasks)} editable team tasks.")
 
+    # 3. 合并任务列表并去重
+    # 使用集合进行去重，确保每个任务只出现一次
+    all_tasks_dict = {}
+    for task in user_own_tasks:
+        all_tasks_dict[task.id] = task
+    for task in team_tasks:
+        all_tasks_dict[task.id] = task # 如果有重复，后面的会覆盖前面的，但通常团队任务和个人任务通过上述筛选是互斥的
 
-    # 3. 合并任务列表并去重（如果一个任务可能同时是个人任务又是团队任务，尽管通常不会这样设计）
-    # 为了确保显示不重复且按最新创建时间排序，可以先转为集合去重再转回列表，然后重新排序
-    # 这里为了简化，我们直接合并，如果您的业务逻辑确保了个人任务和团队任务是互斥的，则不需要复杂去重
-    
-    # 简单的合并，如果需要更复杂的去重和排序，请调整
-    all_user_related_tasks = user_own_tasks + team_tasks
-    
-    # 如果需要确保唯一性并按创建时间排序，可以这样做：
-    # task_ids = set()
-    # unique_tasks = []
-    # for task in all_user_related_tasks:
-    #     if task.id not in task_ids:
-    #         unique_tasks.append(task)
-    #         task_ids.add(task.id)
-    # # 重新排序合并后的任务列表
-    # unique_tasks.sort(key=lambda t: t.created_at, reverse=True)
-    # user_data = unique_tasks
-    
-    # 如果简单合并即可，那么直接用此行：
-    user_data = sorted(all_user_related_tasks, key=lambda t: t.created_at, reverse=True)
-
+    # 将字典的值转换为列表并按创建时间倒序排序
+    user_data = sorted(all_tasks_dict.values(), key=lambda t: t.created_at, reverse=True)
 
     return render_template('dashboard.html', 
                            user=user, 
-                           user_data=user_data, # 将处理好的任务列表传递给 user_data
-                           user_teams=user_teams, # 如果dashboard页面还需要显示团队信息，可以保留
-                           team_tasks=team_tasks # 也可以保留，但dashboard.html只迭代 user_data
+                           user_data=user_data,
+                           user_teams=user_teams, 
+                           team_tasks=team_tasks # 实际上dashboard.html只迭代 user_data
                           )
 
 @app.route('/add_data', methods=['GET', 'POST'])
@@ -544,7 +548,7 @@ def add_data():
         team_editable = 'team_editable' in request.form if team_id else False
 
         if not title or not content:
-            flash('Title and content are required.', 'danger')
+            flash('标题和内容为必填项。', 'danger')
             return render_template('add_data.html' ,user=user, teams=teams)
 
         deadline = None
@@ -552,7 +556,7 @@ def add_data():
             try:
                 deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
             except ValueError:
-                flash('Invalid deadline format.', 'danger')
+                flash('截止时间格式无效。', 'danger')
                 return render_template('add_data.html' ,user=user, teams=teams)
 
         new_data = UserData(
@@ -567,11 +571,11 @@ def add_data():
         try:
             db.session.add(new_data)
             db.session.commit()
-            flash('Data added successfully!', 'success')
+            flash('任务添加成功！', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash('An error occurred while adding data.', 'danger')
+            flash('添加任务时出错。', 'danger')
             return render_template('add_data.html' ,user=user, teams=teams)
 
     return render_template('add_data.html' ,user=user, teams=teams)
@@ -596,7 +600,7 @@ def edit_data(data_id):
         deadline_str = request.form.get('deadline')
 
         if not title or not content:
-            flash('Title and content are required.', 'danger')
+            flash('标题和内容为必填项。', 'danger')
             return render_template('edit_data.html', data=data,user=user, teams=teams)
 
         # Convert deadline string to datetime if provided
@@ -605,7 +609,7 @@ def edit_data(data_id):
             try:
                 deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
             except ValueError:
-                flash('Invalid deadline format.', 'danger')
+                flash('截止日期格式无效。', 'danger')
                 return render_template('edit_data.html', data=data,user=user, teams=teams)
 
         
@@ -629,11 +633,11 @@ def edit_data(data_id):
 
         try:
             db.session.commit()
-            flash('Data updated successfully!', 'success')
+            flash('任务更新成功！', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash('An error occurred while updating data.', 'danger')
+            flash('更新任务时出错。', 'danger')
             return render_template('edit_data.html', data=data,user=user, teams=teams)
 
     return render_template('edit_data.html', data=data,user=user, teams=teams)
@@ -652,10 +656,10 @@ def update_user(user_id):
 
     try:
         db.session.commit()
-        flash('User updated successfully!', 'success')
+        flash('用户更新成功！', 'success')
     except Exception:
         db.session.rollback()
-        flash('Update failed.', 'danger')
+        flash('用户更新失败。', 'danger')
 
     return redirect(url_for('master'))
 
@@ -666,10 +670,10 @@ def delete_user(user_id):
     try:
         db.session.delete(user)
         db.session.commit()
-        flash('User deleted successfully!', 'success')
+        flash('已成功删除用户！', 'success')
     except Exception:
         db.session.rollback()
-        flash('Delete failed.', 'danger')
+        flash('删除用户失败。', 'danger')
 
     return redirect(url_for('master'))
 
@@ -687,10 +691,10 @@ def delete_data(data_id):
     try:
         db.session.delete(data)
         db.session.commit()
-        flash('Data deleted successfully!', 'success')
+        flash('任务删除成功！', 'success')
     except Exception as e:
         db.session.rollback()
-        flash('An error occurred while deleting data.', 'danger')
+        flash('删除任务时出错。', 'danger')
 
     return redirect(url_for('dashboard'))
 
@@ -745,10 +749,10 @@ def profile():
         # 提交变更
         try:
             db.session.commit()
-            flash('Profile updated successfully.', 'success')
+            flash('个人信息更新成功！', 'success')
         except Exception as e:
             db.session.rollback()
-            flash('Failed to update profile.', 'danger')
+            flash('个人信息更新失败。', 'danger')
 
         return redirect(url_for('profile'))
 
@@ -847,12 +851,12 @@ def complete_data(data_id):
         # 这里的 user.teams 不再需要 .all()，因为它已经是列表了
         if data.team not in user.teams:
             permission_denied = True
-            logger.warning(f"Permission denied: User {user.id} (username: {user.username}) tried to complete team task {data_id} (team {data.team_id}) but is not in team.")
+            logger.warning(f"权限被拒绝：用户 {user.id} (用户名：{user.username}) 尝试完成团队任务 {data_id} (团队 {data.team_id}) 但不在团队中。")
     else:
         # 非队伍任务，仅作者可完成
         if data.user_id != user.id:
             permission_denied = True
-            logger.warning(f"Permission denied: User {user.id} (username: {user.username}) tried to complete personal task {data_id} (owner {data.user_id}) but is not the owner.")
+            logger.warning(f"权限被拒绝：用户 {user.id} (用户名：{user.username}) 尝试完成私人任务 {data_id} (创建者 {data.user_id}) 但不是创建者。")
 
     if permission_denied:
         # 如果权限被拒绝，直接返回 JSON 格式的错误信息和 403 状态码
@@ -867,11 +871,11 @@ def complete_data(data_id):
         # 对于 AJAX 请求，通常不需要 flash 消息，因为前端会处理提示
         # flash('任务已成功标记为完成！', 'success') 
 
-        logger.info(f"Task {data_id} marked as completed by user {user.id}")
+        logger.info(f"任务 {data_id} 被用户 {user.id} 标记为完成")
         return jsonify({"success": True, "message": "任务已成功标记为完成！"})
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error marking task {data_id} as completed: {e}")
+        logger.error(f"任务 {data_id} 被用户 {user.id} 标记为完成时发生错误: {e}")
 
         # 对于 AJAX 请求，通常不需要 flash 消息
         # flash('标记任务完成时发生错误。', 'danger') 
@@ -891,6 +895,14 @@ def internal_error(error):
 @app.errorhandler(403)
 def forbidden_error(error):
     return render_template('errors/403.html'), 403
+
+@app.before_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+    if user_id is None:
+        g.user = None
+    else:
+        g.user = User.query.get(user_id)
 
 if __name__ == '__main__':
     with app.app_context():
