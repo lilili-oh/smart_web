@@ -56,4 +56,4 @@
 )
 ```
 * error: when using the function of analysing by AI， you meet the error of “Error during analysis: 调用讯飞星火 X1 HTTP API 失败: HTTPSConnectionPool(host='spark-api-open.xf-yun.com', port=443): Max retries exceeded with url: /v2/chat/completions (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)'))) ”.
-* method：**close the VPN or switch other stable networks **
+* method：**close the VPN or switch other stable networks**
