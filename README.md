@@ -36,7 +36,7 @@
 
 
 ## Troubleshooting
-* error: sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-0-ap-southeast-1.pooler.supabase.com" (52.77.146.31), port 5432 failed: received invalid response to GSSAPI negotiation: S  
+* <u>error<u/>: sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-0-ap-southeast-1.pooler.supabase.com" (52.77.146.31), port 5432 failed: received invalid response to GSSAPI negotiation: S  
   method: add following config in app.py then you solve this problem successfully!
 
 ```
