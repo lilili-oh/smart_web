@@ -42,3 +42,18 @@
     python app.py
 
 .
+
+
+## Troubleshooting
+* error: sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-0-ap-southeast-1.pooler.supabase.com" (52.77.146.31), port 5432 failed: received invalid response to GSSAPI negotiation: S
+* method: add following config in app.py then you solve this problem successfully!
+
+```
+    app.config['SQLALCHEMY_DATABASE_URI'] = (
+    "postgresql://postgres.fopmwefhfaqniynceqio:lon2mONTsm0oFBY8"
+    "@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+    "?gssencmode=disable"
+)
+```
+* error: when using the function of analysing by AI， you meet the error of “Error during analysis: 调用讯飞星火 X1 HTTP API 失败: HTTPSConnectionPool(host='spark-api-open.xf-yun.com', port=443): Max retries exceeded with url: /v2/chat/completions (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)'))) ”.
+* method：**close the VPN or switch other stable networks **
