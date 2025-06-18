@@ -27,14 +27,6 @@
   
 .
 
-* install ollama, visit <https://ollama.com/download> and run
-
-.
-
-    ollama run deepseek-r1:1.5b
-
-.
-
 ## Run the program & visit <http://127.0.0a.1:5000/>
 
 .
