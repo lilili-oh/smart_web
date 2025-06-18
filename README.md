@@ -20,7 +20,6 @@
 ## Installation
 * Download dependencies
 
-.
 
     pip install Flask
   
@@ -30,16 +29,12 @@
     
     pip install openai
   
-.
 
 ## Code-Running
 Run the program & visit <http://127.0.0a.1:5000/>
 
-.
 
     python app.py
-
-.
 
 
 ## Troubleshooting
