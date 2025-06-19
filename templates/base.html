@@ -52,12 +52,18 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
-                {% if session.get('user_id') %}
+                {% if g.user %}
+                {# 管理员中心链接 - 仅管理员可见 #}
+                {% if g.user.is_admin %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('master') }}"><i class="fas fa-cogs me-1"></i>管理员中心</a>
+                </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="fas fa-tasks me-1"></i>任务栏</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('summary') }}"><i class="fas fa-users me-1"></i>团队概况</a>
+                    <a class="nav-link" href="{{ url_for('team_detail') }}"><i class="fas fa-users me-1"></i>团队概况</a>
                 </li>
                 {% endif %}
             </ul>
