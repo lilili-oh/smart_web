@@ -14,6 +14,9 @@ import json
 import logging
 from dotenv import load_dotenv
 import os
+from email.header import Header
+from email.utils import formataddr
+import traceback
 
 load_dotenv()
 app = Flask(__name__)
@@ -25,9 +28,9 @@ app.config['MAIL_SERVER'] = 'smtp.163.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME').strip()
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD').strip()
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER').strip()
 app.config['MAIL_DEFAULT_CHARSET'] = 'utf-8'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 app.config['XFYUN_SPARK_X1_API_KEY'] = os.environ.get('XFYUN_SPARK_X1_API_KEY')
@@ -733,41 +736,6 @@ def edit_data(data_id):
 
     return render_template('edit_data.html', data=data,user=user, teams=teams)
 
-# add || update user_data
-# @app.route('/update_user/<int:user_id>', methods=['POST'])
-# @admin_required
-# def update_user(user_id):
-#     user = User.query.get_or_404(user_id)
-#     user.username = request.form.get('username')
-#     user.email = request.form.get('email')
-#     password = request.form.get('password')
-
-#     if password:
-#         user.password = generate_password_hash(password)
-
-#     try:
-#         db.session.commit()
-#         flash('用户更新成功！', 'success')
-#     except Exception:
-#         db.session.rollback()
-#         flash('用户更新失败。', 'danger')
-
-#     return redirect(url_for('master'))
-
-# @app.route('/delete_user/<int:user_id>')
-# @admin_required
-# def delete_user(user_id):
-#     user = User.query.get_or_404(user_id)
-#     try:
-#         db.session.delete(user)
-#         db.session.commit()
-#         flash('已成功删除用户！', 'success')
-#     except Exception:
-#         db.session.rollback()
-#         flash('删除用户失败。', 'danger')
-
-#     return redirect(url_for('master'))
-
 @app.route('/delete_data/<int:data_id>')
 @login_required
 def delete_data(data_id):
@@ -864,24 +832,33 @@ def reset_password_request():
             try:
                 token = serializer.dumps(user.email, salt='reset-password')
                 reset_url = url_for('reset_token', token=token, _external=True)
-                
-                msg = Message("密码重置请求", recipients=[user.email], charset="utf-8")
-                msg.html = render_template('reset_password_email.html', user=user, reset_url=reset_url)
-                msg.charset = "utf-8" # 显式设置消息内容的编码
+
+                subject = "任务管理系统 - 重置密码请求"
+                html_body = render_template('reset_password_email.html', user=user, reset_url=reset_url)
+
+                msg = Message(
+                    subject=subject,
+                    sender=('任务系统', app.config['MAIL_DEFAULT_SENDER']),  # ⚠️ 这里用 tuple
+                    recipients=[user.email],
+                    charset='utf-8'
+                )
+                msg.body = "请使用支持 HTML 的邮箱查看这封邮件。"
+                msg.html = html_body
+
+                current_app.logger.debug(repr(app.config['MAIL_USERNAME']))
+                current_app.logger.debug(repr(app.config['MAIL_PASSWORD']))
+                current_app.logger.debug(repr(app.config['MAIL_DEFAULT_SENDER']))
+
                 mail.send(msg)
-                flash('一封包含重置密码链接的邮件已发送到您的邮箱。请检查收件箱（包括垃圾邮件）。', 'info')
+
+                flash('已发送密码重置邮件，请检查收件箱（包含垃圾邮件）。', 'info')
             except Exception as e:
                 current_app.logger.error(f"Error sending password reset email: {e}")
-                flash('发送重置邮件失败，请稍后再试。', 'danger')
+                flash(f'发送邮件失败：{e}', 'danger')
         else:
-            # 无论邮箱是否存在，都给出相同提示，防止枚举攻击
-            flash('如果该邮箱已注册，一封包含重置密码链接的邮件已发送。', 'info')
-            # 实际上，这里是为了安全不暴露邮箱是否存在
-            # flash('该邮箱未注册。', 'danger') # (Not recommended for security reasons)
+            flash('若邮箱存在，已发送重置邮件，请检查收件箱（包含垃圾邮件）。', 'info')
 
     return render_template('reset_password_request.html')
-
-
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_token(token):
     email = None
@@ -937,7 +914,7 @@ def reset_token(token):
         #     return render_template('reset_password.html', token=token)
 
 
-        user.password_hash = generate_password_hash(password)
+        user.password = generate_password_hash(password)
         try:
             db.session.commit()
             flash('您的密码已成功重置！请使用新密码登录。', 'success')
