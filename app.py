@@ -603,7 +603,7 @@ def dashboard():
         tasks_from_teams = UserData.query.filter(
             and_(
                 UserData.team_id.in_(team_ids),
-                UserData.team_editable == True
+                # UserData.team_editable == True
             )
         ).order_by(UserData.created_at.desc()).all()
         team_tasks.extend(tasks_from_teams)
