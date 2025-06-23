@@ -2,11 +2,22 @@
 
 ## _This is a convenient website, which helping us analysis tasks recorded using AI (deepseek)_
 
+
 ## Contents
 - [Configuration](#Configuration)
 - [Installation](#Installation)
 - [Code-Running](#Code-Running)
 - [Troubleshooting](#Troubleshooting)
+
+## Demonstrate
+![image](https://github.com/user-attachments/assets/aeb31598-9d86-4689-89a6-e1602719eaa6)
+
+![image](https://github.com/user-attachments/assets/821d15e5-3278-4da0-ba94-7a53f39658d2)
+
+![image](https://github.com/user-attachments/assets/211ebb59-37f3-409b-a44b-963b8558b4ee)
+
+![image](https://github.com/user-attachments/assets/6793254c-5bb0-4432-9d51-89676aed0443)
+
 
 ## Configuration
 * python 3.12
