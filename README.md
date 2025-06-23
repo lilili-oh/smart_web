@@ -3,7 +3,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/)  
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-lightgrey?logo=flask)](https://flask.palletsprojects.com/)  
-[![License](https://img.shields.io/github/license/your-username/Smart_Web)](LICENSE)  
+[![License](https://img.shields.io/github/license/lilili-oh/smart_web)](LICENSE)
 [![OpenAI](https://img.shields.io/badge/OpenAI-API-green?logo=openai)](https://platform.openai.com/)
 
 <p align="center">
