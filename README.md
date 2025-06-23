@@ -9,7 +9,7 @@
 > **Smart_Web** is a lightweight AI-powered task analysis platform built with Flask.  
 > It leverages the DeepSeek model and OpenAI API to help users evaluate and gain insights into structured tasks.
 
----
+
 
 ## ✨ Features
 
@@ -19,7 +19,7 @@
 - 💌 Email support (Flask-Mail integration)
 - 🌐 Lightweight local web interface
 
----
+
 
 ## 📚 Table of Contents
 
@@ -33,7 +33,7 @@
 - [📄 License](#-license)
 - [🙏 Acknowledgments](#-acknowledgments)
 
----
+
 
 ## 📦 Configuration
 
@@ -44,7 +44,7 @@
 - Flask-Mail 0.10.0
 - OpenAI 1.64.0
 
----
+
 
 ## ⚙️ Installation
 
@@ -57,7 +57,7 @@ pip install Flask-Mail
 pip install openai
 ````
 
----
+
 
 ## ▶️ Running the Code
 
@@ -69,7 +69,7 @@ python app.py
 
 Then open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
----
+
 
 ## 🚀 Deployment
 
@@ -83,7 +83,7 @@ For production environments, you may consider:
 * Setting environment variables securely (`SECRET_KEY`, `MAIL_PASSWORD`, etc.)
 * Deploying via services like **Render**, **Railway**, **Fly.io**, or **Docker**
 
----
+
 
 ## 🐞 Troubleshooting
 
@@ -101,7 +101,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 )
 ```
 
----
+
 
 ### ❗ iFlytek SSL API Error
 
@@ -111,7 +111,6 @@ SSLError: EOF occurred in violation of protocol (_ssl.c:1010)
 
 ✅ Try disabling VPN or switching to a stable network.
 
----
 
 ### ❗ Generic PostgreSQL Connection Error
 
@@ -127,7 +126,7 @@ Ensure:
 * Password uses only ASCII characters
 * VPNs and proxies are disabled if needed
 
----
+
 
 ## 🖼️ Demonstration
 
@@ -136,7 +135,7 @@ Ensure:
 <img src="https://github.com/user-attachments/assets/211ebb59-37f3-409b-a44b-963b8558b4ee" width="600" />
 <img src="https://github.com/user-attachments/assets/6793254c-5bb0-4432-9d51-89676aed0443" width="600" />
 
----
+
 
 ## 🤝 Contributing
 
@@ -148,13 +147,13 @@ Contributions are welcome!
 4. Push to the branch (`git push origin feature-name`)
 5. Open a Pull Request
 
----
+
 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
 
----
+
 
 ## 🙏 Acknowledgments
 
@@ -164,5 +163,5 @@ This project is licensed under the [MIT License](LICENSE).
 * [Supabase](https://supabase.com)
 * [iFlytek Spark](https://xinghuo.xfyun.cn/)
 
-```
+
 
