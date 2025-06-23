@@ -47,8 +47,11 @@
 
 
 ## ⚙️ Installation
+Method 1: Run requirements.txt 
+```
+pip install -r requirements.txt
 
-Install dependencies:
+Method 2: Install dependencies:
 
 ```bash
 pip install Flask
