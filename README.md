@@ -55,6 +55,10 @@ pip install Flask
 pip install Flask-SQLAlchemy
 pip install Flask-Mail
 pip install openai
+pip install python-dotenv
+pip install psycopg2
+pip install requests
+
 ````
 
 
@@ -163,5 +167,11 @@ This project is licensed under the [MIT License](LICENSE).
 * [Supabase](https://supabase.com)
 * [iFlytek Spark](https://xinghuo.xfyun.cn/)
 
+* **Special thanks to my teammates for their collaboration and support in building this project**:
+
+- **Yue Guo**
+- **Bo Yang**
+
+This project would not have been possible without your efforts. 💪
 
 
