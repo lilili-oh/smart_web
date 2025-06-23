@@ -15,6 +15,15 @@
 
 ---
 
+## 📖 Project Overview
+
+University life today is much more than just studying. Balancing internships, exams, research projects, competitions, clubs, hobbies, and travel brings both freedom and pressure. When tasks accumulate, confusion and overwhelm often follow.
+
+To address this, our team developed a scalable task management system as part of a database project. Featuring AI-powered analysis, cloud-hosted database, and email reminders, it’s already proven effective in managing class notifications more smoothly than chaotic chat groups.
+
+In this AI-driven age, embracing and mastering AI tools is key to unlocking our potential and navigating the future with confidence.
+
+
 ## ✨ Features
 
 - 🧠 Analyze tasks using DeepSeek (1.5b) or OpenAI models  
