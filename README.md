@@ -50,7 +50,6 @@
 Method 1: Run requirements.txt 
 ```
 pip install -r requirements.txt
-
 ```
 
 Method 2: Install dependencies:
